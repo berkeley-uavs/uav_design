@@ -1,0 +1,41 @@
+<mujoco model="Quadrotor">
+
+    <worldbody>
+
+    <body name="quadrotor" pos="0 0 0.1">
+    <geom name="core" type="box" pos="0 0 0" quat="1. 0. 0. 0" size="0.06 0.035 0.025" rgba="0.3 0.3 0.8 1" mass=".2"/>
+
+    <geom name="a00" type="box" pos=".071 0.071 0.0" size="0.05 0.01 0.0025" quat=".924 0.0 0.0 0.383"
+          rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="a10" type="box" pos=".071 -0.071 0.0" size="0.05 0.01 0.0025" quat=".383 0.0 0.0 0.924"
+          rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="a20" type="box" pos="-0.071 -0.071 0.0" size="0.05 0.01 0.0025" quat="-.383 0.0 0.0 0.924"
+          rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="a30" type="box" pos="-.071 0.071 0.0" size="0.05 0.01 0.0025" quat=".924 0.0 0.0 -0.383"
+          rgba="0.5 0.5 0.5 1" mass=".025"/>
+
+    <joint name="root" type="free" damping="0" armature="0" pos="0 0 0"/>
+
+    <!-- Actuator sites to attach actuators  -->
+    <site name="thrust" type="box" pos="0 0 0" size="0.06 0.035 0.025" quat="1.0 0.0 0.0 0." rgba="0.5 0.5 0.5 1"/>
+    <site name="rateX" type="box" pos="0 0 0" quat="1. 0. 0. 0." size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1"/>
+    <site name="rateY" type="box" pos="0 0 0" quat="1. 0. 0. 0." size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1"/>
+    <site name="rateZ" type="box" pos="0 0 0" quat="1. 0. 0. 0." size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1"/>
+
+    <!-- Thruster geometries for collisions since site's are excluded from collision checking -->
+    <geom name="thruster0" type="cylinder" pos=" 0.1  0.1  0.01" size="0.05 0.0025" rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.05 0.0025" rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="thruster2" type="cylinder" pos="-0.1 -0.1  0.01" size="0.05 0.0025" rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <geom name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.05 0.0025" rgba="0.5 0.5 0.5 1" mass=".025"/>
+    <site name="thruster0" type="cylinder" pos=" 0.1  0.1  0.01" size="0.005 0.00025" rgba="0.5 0.5 0.5 1"/>
+    <site name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.005 0.00025" rgba="0.5 0.5 0.5 1"/>
+    <site name="thruster2" type="cylinder" pos="-0.1 -0.1  0.01" size="0.005 0.00025" rgba="0.5 0.5 0.5 1"/>
+    <site name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.005 0.00025" rgba="0.5 0.5 0.5 1"/>
+
+    <!-- Visualization of the coordinate frame -->
+    <!-- <site name="qcX" type="box" pos="0.1 0.0 0.0" size="0.1 0.005 0.005"  quat = " 1.000  0.0  0.0    0."     rgba="1 0 0 1" />
+    <site name="qcY" type="box" pos="0.0 0.1 0.0" size="0.1 0.005 0.005"  quat = " 0.707  0.0  0.0    0.707"  rgba="0 1 0 1" />
+    <site name="qcZ" type="box" pos="0.0 0.0 0.1" size="0.1 0.005 0.005"  quat = "-0.707  0.0  0.707  0."     rgba="0 0 1 1" /> -->
+</body>
+     </worldbody>
+    </mujoco>

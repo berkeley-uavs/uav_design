@@ -1,0 +1,19 @@
+[tool.pdm]
+
+[project]
+name = "mujoco_uavs"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Piergiuseppe Mallozzi", email = "mallozzi@berkeley.edu"},
+]
+dependencies = [
+    "dm-control>=1.0.9",
+]
+requires-python = ">=3.11"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-pep517>=1.0"]
+build-backend = "pdm.pep517.api"
