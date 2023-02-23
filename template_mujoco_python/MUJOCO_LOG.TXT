@@ -4,3 +4,15 @@ ERROR: Python exception raised
 Thu Feb 16 12:53:16 2023
 ERROR: Python exception raised
 
+Fri Feb 17 12:54:25 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 0.1000.
+
+Fri Feb 17 12:54:40 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 0.1000.
+
+Fri Feb 17 13:05:09 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 3. The simulation is unstable. Time = 0.1300.
+
+Fri Feb 17 13:05:22 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 3. The simulation is unstable. Time = 0.1300.
+
