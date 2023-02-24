@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 xml_path = 'quadrotor.xml' #xml file (assumes this is in the same folder as this file)
-simend = 25 #simulation time
+simend = 200 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
 
@@ -43,6 +43,7 @@ def controller(model, data):
     data.ctrl[1] = cntrl
     data.ctrl[2] = cntrl
     data.ctrl[3] = cntrl
+    # data.ctrl[4] = 10
     if abs((des_vel - act_vel)) - abs(diff_old):
         Gain = Gain - 0.001
     else:
@@ -178,9 +179,9 @@ while not glfw.window_should_close(window):
     viewport = mj.MjrRect(0, 0, viewport_width, viewport_height)
 
     #print camera configuration (help to initialize the view)
-    if (print_camera_config==1):
-        print('cam.azimuth =',cam.azimuth,';','cam.elevation =',cam.elevation,';','cam.distance = ',cam.distance)
-        print('cam.lookat =np.array([',cam.lookat[0],',',cam.lookat[1],',',cam.lookat[2],'])')
+    # if (print_camera_config==1):
+    #     print('cam.azimuth =',cam.azimuth,';','cam.elevation =',cam.elevation,';','cam.distance = ',cam.distance)
+    #     print('cam.lookat =np.array([',cam.lookat[0],',',cam.lookat[1],',',cam.lookat[2],'])')
 
     # Update scene and render
     mj.mjv_updateScene(model, data, opt, None, cam,
