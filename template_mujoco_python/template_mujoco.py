@@ -18,6 +18,8 @@ lasty = 0
 
 curr_height = 0.0 
 Gain = .025
+des_height = 0.5
+desiredangle = 0
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
@@ -29,8 +31,7 @@ def init_controller(model,data):
 
 def controller(model, data):
     #put the controller here. This function is called inside the simulation.
-    global Gain, curr_height
-    des_height = 0.5
+    global Gain, curr_height, des_height, desiredangle
     t_const_v = 1.0
 
     des_vel = (des_height - curr_height/t_const_v)
@@ -39,24 +40,60 @@ def controller(model, data):
     cntrl = Gain*diff_old
     if(des_vel <=0):
         cntrl = 0
-    data.ctrl[0] = cntrl
-    data.ctrl[1] = cntrl
-    data.ctrl[2] = cntrl
-    data.ctrl[3] = cntrl
-    # data.ctrl[4] = 10
     if abs((des_vel - act_vel)) - abs(diff_old):
         Gain = Gain - 0.001
     else:
         Gain = Gain + 0.001
-    curr_height = data.qpos[2]
-    print(curr_height, des_vel, act_vel, Gain, cntrl)
+    curr_height = data.qpos[2] 
+    # print(curr_height, des_vel, act_vel, Gain, cntrl)
+
+    tiltangle1 = data.sensordata[0]
+    tiltvel1 = data.sensordata[1]
+
+    tiltangle2 = data.sensordata[2]
+    tiltvel2 = data.sensordata[3]
     
-    pass
+    
+    Kp = .005
+    Kd = Kp/10
+    control1 = -Kp*(tiltangle1-desiredangle) - Kd*tiltvel1 # position control
+    control2 = -Kp*(tiltangle2-desiredangle) - Kd*tiltvel2 # position control
+
+    
+    print(des_height, desiredangle)
+    data.ctrl[0] = cntrl
+    data.ctrl[1] = cntrl
+    data.ctrl[2] = cntrl
+    data.ctrl[3] = cntrl
+    data.ctrl[4] = control1
+    data.ctrl[5] = control2
+
+    
+def set_torque_servo(actuator_no, flag):
+    if (flag==0):
+        model.actuator_gainprm[actuator_no, 0] = 0
+    else:
+        model.actuator_gainprm[actuator_no, 0] = 1
 
 def keyboard(window, key, scancode, act, mods):
+    global des_height, desiredangle
     if act == glfw.PRESS and key == glfw.KEY_BACKSPACE:
         mj.mj_resetData(model, data)
         mj.mj_forward(model, data)
+    
+    if act == glfw.PRESS and key == glfw.KEY_UP:
+        des_height += 0.1
+    
+    if act == glfw.PRESS and key == glfw.KEY_DOWN:
+        des_height -= 0.1
+    
+    if act == glfw.PRESS and key == glfw.KEY_RIGHT:
+        desiredangle += 0.01
+    
+    if act == glfw.PRESS and key == glfw.KEY_LEFT:
+        desiredangle -= 0.01
+
+
 
 def mouse_button(window, button, act, mods):
     # update button state
@@ -172,6 +209,8 @@ while not glfw.window_should_close(window):
 
     if (data.time>=simend):
         break;
+    
+
 
     # get framebuffer viewport
     viewport_width, viewport_height = glfw.get_framebuffer_size(
