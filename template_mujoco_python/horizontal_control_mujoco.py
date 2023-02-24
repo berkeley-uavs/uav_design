@@ -21,37 +21,83 @@ Gain = .025
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
-    global Gain, curr_height
-    Gain = .025
+    global Gain_vert, Gain_yaw, Gain_pitch, Gain_roll, Gain_x, curr_height, curr_x, curr_y, ang0, ang2
+    Gain_vert = .025
+    Gain_x = .025
+    Gain_y = 0.025
     curr_height = 0.0
-
+    curr_x = 0.0
+    curr_y = 0.0
+    ang1 =0.0
+    ang2 = 0.0
     pass
 
 def controller(model, data):
     #put the controller here. This function is called inside the simulation.
-    global Gain, curr_height
+    global Gain_vert, Gain_yaw, Gain_pitch, Gain_roll, Gain_x, curr_height, curr_x, ang1, ang2
+
+    #keep raw pitch and roll at 0 -> then solve for linear motion
+
+    #vertical cascade
     des_height = 0.5
     t_const_v = 1.0
-    data.ctrl[4] = -0.0
-    data.ctrl[5] = 0.0
+    
     des_vel = (des_height - curr_height/t_const_v)
     act_vel = data.qvel[2]
     diff_old = (des_vel - act_vel)
-    cntrl = Gain*diff_old
+    vert_cntrl = Gain_vert*diff_old
     if(des_vel <=0):
-        cntrl = 0
-    data.ctrl[0] = cntrl
-    data.ctrl[1] = cntrl
-    data.ctrl[2] = cntrl
-    data.ctrl[3] = cntrl
+        vert_cntrl = 0
+    total_vert_cntrl = 4* vert_cntrl
+
     # data.ctrl[4] = 10
     if abs((des_vel - act_vel)) - abs(diff_old):
-        Gain = Gain - 0.001
+        Gain_vert = Gain_vert - 0.001
     else:
-        Gain = Gain + 0.001
+        Gain_vert = Gain_vert + 0.001
     curr_height = data.qpos[2]
-    print(curr_height, des_vel, act_vel, Gain, cntrl)
+    print(curr_height, des_vel, act_vel, Gain_vert, vert_cntrl)
+
+    #x_cascade 
+
+    des_x = 0.5
+    t_const_v = 1.0
+    des_vel_x = (des_x - curr_x/t_const_v)
+    act_vel_x = data.qvel[0]
+    diff_old_x =(des_vel_x - act_vel_x)
+    hor_cntrl = Gain_x*diff_old
+    if(des_vel_x <=0):
+        hor_cntrl = 0
     
+
+    # data.ctrl[4] = 10
+    if abs((des_vel_x - act_vel_x)) - abs(diff_old_x):
+        Gain_x = Gain_x - 0.001
+    else:
+        Gain_x = Gain_x + 0.001
+    curr_x = data.qpos[0]
+    print(curr_x, des_vel_x, act_vel_x, Gain_x, hor_cntrl)
+
+
+    #y_cascade 
+
+    hor_cntrl_y = -hor_cntrl
+
+
+    #roll_cascade
+    cntrl_roll = 0
+    cntrl_pitch = 0
+    cntrl_yaw = 0
+
+    
+
+    des_cntrls = np.array([[hor_cntrl] [hor_cntrl_y] [vert_cntrl] [cntrl_roll] [cntrl_pitch] [cntrl_yaw]])
+
+
+    mixer_matrix = np.array([(cos(np.pi/4)*cos(curr_ang0)),0, (cos(np.pi/4)*cos(curr_ang2)), 0, 0o ])
+
+    data.ctrl[4] = (ang0 - curr_ang0)/.25
+    data.ctrl[5] = (ang2 - curr_ang2)/.25
     pass
 
 def keyboard(window, key, scancode, act, mods):
