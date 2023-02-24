@@ -2,7 +2,6 @@ import numpy as np
 from dm_control import mjcf
 from examples.utils.rendering import render_model
 
-
 DEFAULT_LENGTH = 0.05
 DEFAULT_WIDTH = 0.01
 DEFAULT_HEIGHT = 0.0025
@@ -11,11 +10,11 @@ DEFAULT_HEIGHT = 0.0025
 class Arm:
 
     def __init__(self,
+                 body,
+                 pos: list[float],
+                 quat: list[float],
                  size: list[int] | None = None,
                  rgba: list[int] | None = None):
-        self.model = mjcf.RootElement()
-
-        self.model.default.geom.type = 'box'
 
         if rgba is None:
             """Random color"""
@@ -25,13 +24,13 @@ class Arm:
         if size is None:
             size = [DEFAULT_LENGTH, DEFAULT_WIDTH, DEFAULT_HEIGHT]
 
-        self.body = self.model.worldbody.add('body')
-        self.body.add('geom',
-                      type="box",
-                      size=size,
-                      quat=[.924, 0.0, 0.0, 0.383],
-                      rgba=rgba,
-                      mass=.025)
+        body.add('geom',
+                 type="box",
+                 pos=pos,
+                 size=size,
+                 quat=quat,
+                 rgba=rgba,
+                 mass=.025)
 
 
 if __name__ == '__main__':

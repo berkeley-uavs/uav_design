@@ -6,7 +6,8 @@ from dm_control.rl import control
 from examples.other.empty import EmptyTask
 
 env_model_path = Path(__file__).parent / "data" / "environment.xml"
-quad_model = Path(__file__).parent.parent / "data" / "quadrotor.xml"
+quad_model = Path(__file__).parent.parent / "utils" / "quadrotor.xml"
+# quad_model = Path(__file__).parent.parent / "data" / "quadrotor.xml"
 task_model = Path(__file__).parent.parent / "data" / "dm" / "task.xml"
 
 
