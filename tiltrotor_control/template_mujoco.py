@@ -53,14 +53,11 @@ def controller(model, data):
     tiltangle2 = data.sensordata[2]
     tiltvel2 = data.sensordata[3]
     
-    
     Kp = .005
     Kd = Kp/10
     control1 = -Kp*(tiltangle1-desiredangle) - Kd*tiltvel1 # position control
     control2 = -Kp*(tiltangle2-desiredangle) - Kd*tiltvel2 # position control
 
-    
-    print(des_height, desiredangle)
     data.ctrl[0] = cntrl
     data.ctrl[1] = cntrl
     data.ctrl[2] = cntrl
@@ -68,12 +65,6 @@ def controller(model, data):
     data.ctrl[4] = control1
     data.ctrl[5] = control2
 
-    
-def set_torque_servo(actuator_no, flag):
-    if (flag==0):
-        model.actuator_gainprm[actuator_no, 0] = 0
-    else:
-        model.actuator_gainprm[actuator_no, 0] = 1
 
 def keyboard(window, key, scancode, act, mods):
     global des_height, desiredangle

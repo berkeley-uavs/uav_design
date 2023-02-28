@@ -27,6 +27,7 @@
   <worldbody>
     <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
     <geom name="floor" type="plane" conaffinity="1" size="100 100 .2" material="blue_grid"/>
+    
     <body name="goal" mocap="true" pos="0.0 0.0 8.5" quat="0.0 0.70710678 0.0 0.70710678">
       <geom type="sphere" size="0.05" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
     </body>
@@ -40,43 +41,56 @@
       <geom type="sphere" size="0.05" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
     </body>
 
-    <body name="quadrotor" pos="0 0 0.1">
-      <geom name="core" type="box" pos="0 0 0" quat = "1. 0. 0. 0" size="0.06 0.035 0.025"  rgba="0.3 0.3 0.8 1" mass = ".2"/>
 
-      <body name="a00" pos=".071 0.071 0.0" quat = ".924 0.0 0.0 0.383">
+    <!-- Quadcopter Description -->
+    <body name="quadrotor" pos="0 0 0.1">
+      
+      <body>
+        <geom name="chassis" type="box" pos="0 0 0" quat = "1. 0. 0. 0" size="0.06 0.035 0.025"  rgba="0.3 0.3 0.8 1" mass = ".2"/>
+      </body>
+      
+      
+
+      <body name="a00" pos=".071 0.071 0.0" euler="0 0 45">
         <joint name="tilta00" type="hinge" axis="1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster0" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="0.5 1.0 0.5 1" mass="0.025"/>
-        <site name="thruster0" type="cylinder"/>
+        
+        <body name="propellor0" pos="0.029 0 0.01" >
+          <geom type="cylinder" size="0.05 0.0025" rgba="0.5 1.0 0.5 1" mass="0.025"/>
+          <site name="thruster0" pos="0 0 -0.01" type="cylinder" />
+        </body>
       </body>
 
-      <body name="a20" pos="-0.071 -0.071 0.0" quat = "-.383 0.0 0.0 0.924">
+
+      <body name="a10" pos=".071 -0.071 0.0" euler="0 0 325">
+        <joint name="tilta10" type="hinge" axis="1 0 0"/>
+        <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
+        
+        <body name="propellor1" pos="0.029 0 0.01">
+          <geom type="cylinder"  size="0.05 0.0025"  rgba="0.5 0.5 1.0 1" mass="0.025"/>
+          <site name="thruster1" pos="0 0 -0.01" type="cylinder" />
+        </body>
+      </body>
+
+
+      <body name="a20" pos="-0.071 -0.071 0.0" euler="0 0 225">
         <joint name="tilta20" type="hinge" axis="1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster2" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster2" type="cylinder" pos="0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
         <site name="thruster2" type="cylinder"/>
       </body>
       
-      <!-- <geom name="a20" type="box" pos="-0.071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = "-.383 0.0 0.0 0.924" rgba="0.5 0.5 0.5 1" mass = ".025"/> -->
 
-
-      <geom name="a10" type="box" pos=".071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = ".383 0.0 0.0 0.924" rgba="0.5 0.5 0.5 1" mass = ".025"/>
+      <!-- <geom name="a10" type="box" pos=".071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = ".383 0.0 0.0 0.924" rgba="0.5 0.5 0.5 1" mass = ".025"/> -->
       <geom name="a30" type="box" pos="-.071 0.071 0.0" size="0.05 0.01 0.0025"  quat = ".924 0.0 0.0 -0.383" rgba="0.5 0.5 0.5 1" mass = ".025"/>
 
       <joint name="root"   type="free" damping="0" armature="0" pos="0 0 0" />
 
-      <!-- Actuator sites to attach actuators  -->
-      <site name="thrust" type="box" pos="0 0 0"  size="0.06 0.035 0.025"  quat = "1.0 0.0 0.0 0." rgba="0.5 0.5 0.5 1"/>
-      <site name="sensor" type="box" pos="0 0 0"  size="0.06 0.035 0.025"  quat = "0.0 0.0 0.0 1." rgba="0.5 0.5 0.5 1"/>
-
-      <site name="rateX" type="box" pos="0 0 0" quat = "1. 0. 0. 0."  size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1" />
-      <site name="rateY" type="box" pos="0 0 0" quat = "1. 0. 0. 0."  size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1" />
-      <site name="rateZ" type="box" pos="0 0 0" quat = "1. 0. 0. 0."  size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1" />
 
       <!-- Thruster geometries for collisions since site's are excluded from collision checking -->
-      <geom name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.05 0.0025"  rgba="0.5 0.5 0.5 1" mass = ".025"/>
+      <!-- <geom name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.05 0.0025"  rgba="0.5 0.5 0.5 1" mass = ".025"/> -->
       <geom name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.05 0.0025"  rgba="0.5 0.5 0.5 1" mass = ".025"/>
-      <site name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.005 0.00025"  rgba="0.5 0.5 0.5 1"/>
+      <!-- <site name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.005 0.00025"  rgba="0.5 0.5 0.5 1"/> -->
       <site name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.005 0.00025"  rgba="0.5 0.5 0.5 1"/>
 
             <!-- Visualization of the coordinate frame -->
@@ -85,20 +99,22 @@
       <site name="qcZ" type="box" pos="0.0 0.0 0.1" size="0.1 0.005 0.005"  quat = "-0.707  0.0  0.707  0."     rgba="0 0 1 1" /> -->
     </body>
   </worldbody>
-    <actuator>
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster0"/>
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster1"/>
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster2"/>z
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster3"/>
-      <motor gear="1" joint="tilta00"/>
-      <motor gear="1" joint="tilta20"/>
-    </actuator>
-    <sensor>
-      <!-- <velocimeter site="thrust"/> -->
-      <!-- <rangefinder site="sensor"/> -->
-      <jointpos name="tiltangle1" joint="tilta00"/>
-      <jointvel name="tiltvel1" joint="tilta00"/>
-      <jointpos name="tiltangle2" joint="tilta20"/>
-      <jointvel name="tiltvel2" joint="tilta20"/>
-    </sensor>
+  <actuator>
+    <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster0"/>
+    <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster1"/>
+    <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster2"/>z
+    <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster3"/>
+    <motor gear="1" joint="tilta00"/>
+    <motor gear="1" joint="tilta20"/>
+  </actuator>
+  
+  <sensor>
+    <!-- <velocimeter site="thrust"/> -->
+    <!-- <rangefinder site="sensor"/> -->
+    <jointpos name="tiltangle1" joint="tilta00"/>
+    <jointvel name="tiltvel1" joint="tilta00"/>
+    <jointpos name="tiltangle2" joint="tilta20"/>
+    <jointvel name="tiltvel2" joint="tilta20"/>
+  </sensor>
+
 </mujoco>
