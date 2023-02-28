@@ -1,0 +1,79 @@
+{
+    "EDGES": [
+        [
+            "Connector_instance_1",
+            "Propeller_str_top_instance_1"
+        ],
+        [
+            "Propeller_str_top_instance_2",
+            "Connector_instance_1"
+        ],
+        [
+            "Propeller_str_top_instance_3",
+            "Connector_instance_3"
+        ],
+        [
+            "Connector_instance_2",
+            "Propeller_str_top_instance_3"
+        ],
+        [
+            "Fuselage_str_instance_1",
+            "Connector_instance_2"
+        ],
+        [
+            "Connector_instance_3",
+            "Propeller_str_top_instance_4"
+        ],
+        [
+            "Connector_instance_2",
+            "Propeller_str_top_instance_2"
+        ]
+    ],
+    "NODES": {
+        "core": [
+            0,
+            0,
+            0
+        ],
+        "arm00": [
+            0.071,
+            0.071,
+            0.0
+        ],
+        "arm10": [
+            0.071,
+            -0.071,
+            0.0
+        ],
+        "arm20": [
+            -0.071,
+            -0.071,
+            0.0
+        ],
+        "arm30": [
+            -0.071,
+            0.071,
+            0.0
+        ],
+        "thruster0": [
+            0.1,
+            0.1,
+            0.01
+        ],
+        "thruster1": [
+            0.1,
+            -0.1,
+            0.01
+        ],
+        "thruster2": [
+            -0.1,
+            -0.1,
+            0.01
+        ],
+        "thruster3": [
+            -0.1,
+            0.1,
+            0.01
+        ]
+    }
+}

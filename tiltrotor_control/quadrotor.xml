@@ -34,9 +34,7 @@
     <body name="goal2" mocap="true" pos="0.5 0.0 0.0" quat="0.0 0.70710678 0.0 0.70710678">
       <geom type="sphere" size="0.05" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
     </body>
-     <body name="goal3" mocap="true" pos="0.0 0.5 0.0" quat="0.0 0.70710678 0.0 0.70710678">
-      <geom type="sphere" size="0.05" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
-    </body>
+   
      <body name="goal4" mocap="true" pos="0.0 0.0 3.0" quat="0.0 0.70710678 0.0 0.70710678">
       <geom type="sphere" size="0.05" contype="0" conaffinity="0" rgba="0 1 0 .5"/>
     </body>
