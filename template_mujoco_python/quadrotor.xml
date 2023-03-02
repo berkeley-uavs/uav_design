@@ -51,17 +51,27 @@
       </body>
 
       <body name="a20" pos="-0.071 -0.071 0.0" quat = "-.383 0.0 0.0 0.924">
-        <joint name="tilta20" type="hinge" axis="1 0 0"/>
+        <joint name="tilta20" type="hinge" axis="-1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
         <geom name="thruster2" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
         <site name="thruster2" type="cylinder"/>
+      </body>
+      <body name="a30" pos="0.071 -0.071 0.0" quat = ".383 0.0 0.0 0.924">
+        <joint name="tilta30" type="hinge" axis="1 0 0"/>
+        <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster3" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <site name="thruster3" type="cylinder"/>
+      </body>
+      <body name="a40" pos="-0.071 0.071 0.0" quat = ".924 0.0 0.0 -.383">
+        <joint name="tilta40" type="hinge" axis="-1 0 0"/>
+        <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster4" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <site name="thruster4" type="cylinder"/>
       </body>
       
       <!-- <geom name="a20" type="box" pos="-0.071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = "-.383 0.0 0.0 0.924" rgba="0.5 0.5 0.5 1" mass = ".025"/> -->
 
 
-      <geom name="a10" type="box" pos=".071 -0.071 0.0" size="0.05 0.01 0.0025"  quat = ".383 0.0 0.0 0.924" rgba="0.5 0.5 0.5 1" mass = ".025"/>
-      <geom name="a30" type="box" pos="-.071 0.071 0.0" size="0.05 0.01 0.0025"  quat = ".924 0.0 0.0 -0.383" rgba="0.5 0.5 0.5 1" mass = ".025"/>
 
       <joint name="root"   type="free" damping="0" armature="0" pos="0 0 0" />
 
@@ -74,10 +84,7 @@
       <site name="rateZ" type="box" pos="0 0 0" quat = "1. 0. 0. 0."  size="0.06 0.035 0.025" rgba="0.5 0.5 0.5 1" />
 
       <!-- Thruster geometries for collisions since site's are excluded from collision checking -->
-      <geom name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.05 0.0025"  rgba="0.5 0.5 0.5 1" mass = ".025"/>
-      <geom name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.05 0.0025"  rgba="0.5 0.5 0.5 1" mass = ".025"/>
-      <site name="thruster1" type="cylinder" pos=" 0.1 -0.1  0.01" size="0.005 0.00025"  rgba="0.5 0.5 0.5 1"/>
-      <site name="thruster3" type="cylinder" pos="-0.1  0.1  0.01" size="0.005 0.00025"  rgba="0.5 0.5 0.5 1"/>
+
 
             <!-- Visualization of the coordinate frame -->
       <!-- <site name="qcX" type="box" pos="0.1 0.0 0.0" size="0.1 0.005 0.005"  quat = " 1.000  0.0  0.0    0."     rgba="1 0 0 1" />
@@ -87,11 +94,13 @@
   </worldbody>
     <actuator>
       <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster0"/>
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster1"/>
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster2"/>z
-      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster3"/>
+      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster2"/>
+      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. .1" site="thruster3"/>
+      <motor ctrllimited="true" ctrlrange="0.0 1.0" gear="0  0. 5. 0. 0. -.1" site="thruster4"/>
       <motor gear="1" joint="tilta00"/>
       <motor gear="1" joint="tilta20"/>
+      <motor gear="1" joint="tilta30"/>
+      <motor gear="1" joint="tilta40"/>
     </actuator>
     <sensor>
       <!-- <velocimeter site="thrust"/> -->
@@ -100,5 +109,9 @@
       <jointvel name="tiltvel1" joint="tilta00"/>
       <jointpos name="tiltangle2" joint="tilta20"/>
       <jointvel name="tiltvel2" joint="tilta20"/>
+      <jointpos name="tiltangle3" joint="tilta30"/>
+      <jointvel name="tiltvel3" joint="tilta30"/>
+      <jointpos name="tiltangle4" joint="tilta40"/>
+      <jointvel name="tiltvel4" joint="tilta40"/>
     </sensor>
 </mujoco>

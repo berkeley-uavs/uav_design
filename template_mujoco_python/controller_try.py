@@ -1,6 +1,8 @@
 import mujoco as mj
 from mujoco.glfw import glfw
 import numpy as np
+import sympy as sp
+import math
 import os
 
 xml_path = 'quadrotor.xml' #xml file (assumes this is in the same folder as this file)
@@ -23,62 +25,70 @@ desiredangle = 0
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
-    global Gain, curr_height
-    Gain = .025
-    curr_height = 0.0
-
+    global f,u, u_val, xdot_des, xdot_val
+    m = 1
+    g = 9.81
+    Ixx = Iyy = Izz = 1
+    sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
+    x_d2 = (T2* math.sin(theta2) - T4*math.sin(theta4) - m*g*math.sin(pitch_angle))/m
+    y_d2 = (T1* math.sin(theta1) - T3*math.sin(theta3) - m*g*math.sin(roll_angle))/m
+    z_d2 = (T1* math.cos(theta1) + T2*math.cos(theta2) + T3*math.cos(theta3) + T4*math.cos(theta4)- m*g*cos(pitch_angle))/m
+    r_d2 = (T2* math.cos(theta2) - T4*math.cos(theta4))/Ixx
+    p_d2 = (T1* math.cos(theta1) -T3*math.cos(theta3))/Iyy
+    yaw_d2 = (T1* math.sin(theta1) + T4*math.sin(theta4)+T3*math.sin(theta3) + T2*math.sin(theta2))/Izz
+    xdot_val = sp.Matrix( [[0] [0] [0] [0] [0] [0]])
+    xdot_des = sp.Matrix( [[0.1] [0] [0.3] [0] [0] [0]])
+    u_val = sp.Matrix([[0] [0] [0] [0] [0] [0] [0] [0]])
+    u = sp.Matrix([[T1] [T2] [T3] [T4] [theta1] [theta2] [theta3] [theta4]])
+    f = sp.Matrix([x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2])
     pass
 
 def controller(model, data):
     #put the controller here. This function is called inside the simulation.
-    global Gain, curr_height, des_height, desiredangle
-    t_const_v = 1.0
+    global f,u, u_val, xdot_des, xdot_val
 
-    des_vel = (des_height - curr_height/t_const_v)
-    act_vel = data.qvel[2]
-    diff_old = (des_vel - act_vel)
-    cntrl = Gain*diff_old
-    if(des_vel <=0):
-        cntrl = 0
-    if abs((des_vel - act_vel)) - abs(diff_old):
-        Gain = Gain - 0.001
-    else:
-        Gain = Gain + 0.001
-    curr_height = data.qpos[2] 
+J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
+J_inv = J.pinv()
+
+u_val = ((xdot_des - xdot_val)*J_inv) + u_val
+
+
+xdot_val = sp.Matrix( [[0] [0] [0] [0] [0] [0]])
+
+
+tiltangle1 = data.sensordata[0]
+tiltvel1 = data.sensordata[1]
+
+tiltangle2 = data.sensordata[2]
+tiltvel2 = data.sensordata[3]
+tiltangle3 = data.sensordata[4]
+tiltvel3 = data.sensordata[5]
+
+tiltangle4 = data.sensordata[6]
+tiltvel4 = data.sensordata[7]
+Kp = .005
+Kd = Kp/10
+control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
+control2 = -Kp*(tiltangle2-u_val[5]) - Kd*tiltvel2 # position control
+control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
+control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
+
+data.cntrl[0] = u_val[0]
+data.cntrl[1] = u_val[1]
+data.cntrl[2] = u_val[2]
+data.cntrl[3] = u_val[3]
+data.cntrl[4] = u_val[4]
+data.cntrl[5] = u_val[5]
+data.cntrl[6] = u_val[6]
+data.cntrl[7] = u_val[7]
+    
+
     # print(curr_height, des_vel, act_vel, Gain, cntrl)
 
-#horizontal control
 
-    tiltangle1 = data.sensordata[0]
-    tiltvel1 = data.sensordata[1]
-
-    tiltangle2 = data.sensordata[2]
-    tiltvel2 = data.sensordata[3]
-    tiltangle3 = data.sensordata[4]
-    tiltvel3 = data.sensordata[5]
-
-    tiltangle4 = data.sensordata[6]
-    tiltvel4 = data.sensordata[7]
-        
-    
-    
-    Kp = .005
-    Kd = Kp/10
-    control1 = -Kp*(tiltangle1-desiredangle) - Kd*tiltvel1 # position control
-    control2 = -Kp*(tiltangle2-desiredangle) - Kd*tiltvel2 # position control
-    control3 = -Kp*(tiltangle3-desiredangle) - Kd*tiltvel3 # position control
-    control4 = -Kp*(tiltangle4-desiredangle) - Kd*tiltvel4 # position control
 
     
-    print(des_height, desiredangle)
-    data.ctrl[0] = cntrl
-    data.ctrl[1] = cntrl
-    data.ctrl[2] = cntrl
-    data.ctrl[3] = cntrl
-    data.ctrl[4] = control1
-    data.ctrl[5] = control2
-    data.ctrl[6] = control3
-    data.ctrl[7] = control4
+   
 
     
 def set_torque_servo(actuator_no, flag):
