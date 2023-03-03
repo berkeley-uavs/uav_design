@@ -2,6 +2,7 @@ import mujoco as mj
 from mujoco.glfw import glfw
 import numpy as np
 import sympy as sp
+from sympy.matrices import Matrix
 import math
 import os
 
@@ -26,61 +27,63 @@ desiredangle = 0
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
     global f,u, u_val, xdot_des, xdot_val
-    m = 1
+    m = 1.0
     g = 9.81
-    Ixx = Iyy = Izz = 1
-    sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
-    x_d2 = (T2* math.sin(theta2) - T4*math.sin(theta4) - m*g*math.sin(pitch_angle))/m
-    y_d2 = (T1* math.sin(theta1) - T3*math.sin(theta3) - m*g*math.sin(roll_angle))/m
-    z_d2 = (T1* math.cos(theta1) + T2*math.cos(theta2) + T3*math.cos(theta3) + T4*math.cos(theta4)- m*g*cos(pitch_angle))/m
-    r_d2 = (T2* math.cos(theta2) - T4*math.cos(theta4))/Ixx
-    p_d2 = (T1* math.cos(theta1) -T3*math.cos(theta3))/Iyy
-    yaw_d2 = (T1* math.sin(theta1) + T4*math.sin(theta4)+T3*math.sin(theta3) + T2*math.sin(theta2))/Izz
-    xdot_val = sp.Matrix( [[0] [0] [0] [0] [0] [0]])
-    xdot_des = sp.Matrix( [[0.1] [0] [0.3] [0] [0] [0]])
-    u_val = sp.Matrix([[0] [0] [0] [0] [0] [0] [0] [0]])
-    u = sp.Matrix([[T1] [T2] [T3] [T4] [theta1] [theta2] [theta3] [theta4]])
-    f = sp.Matrix([x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2])
+    Ixx = Iyy = Izz = 1.0
+    pitch_angle =0.0
+    roll_angle =0.0
+    (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
+    x_d2 = (T2* sp.sin(theta2) - T4*sp.sin(theta4) - m*g*sp.sin(pitch_angle))/m
+    y_d2 = (T1* sp.sin(theta1) - T3*sp.sin(theta3) - m*g*sp.sin(roll_angle))/m
+    z_d2 = (T1* sp.cos(theta1) + T2*sp.cos(theta2) + T3*sp.cos(theta3) + T4*sp.cos(theta4)- m*g*sp.cos(pitch_angle))/m
+    r_d2 = (T2* sp.cos(theta2) - T4*sp.cos(theta4))/Ixx
+    p_d2 = (T1* sp.cos(theta1) -T3*sp.cos(theta3))/Iyy
+    yaw_d2 = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))/Izz
+    xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
+    xdot_des = Matrix( [[0.1],[0] ,[0.3] ,[0] ,[0] ,[0]])
+    u_val = Matrix([[0.0], [0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0]])
+    u = Matrix([[T1], [T2] ,[T3] [T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
+    f = Matrix([x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2])
     pass
 
 def controller(model, data):
-    #put the controller here. This function is called inside the simulation.
+#put the controller here. This function is called inside the simulation.
     global f,u, u_val, xdot_des, xdot_val
 
-J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
-J_inv = J.pinv()
+    J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
+    J_inv = J.pinv()
 
-u_val = ((xdot_des - xdot_val)*J_inv) + u_val
-
-
-xdot_val = sp.Matrix( [[0] [0] [0] [0] [0] [0]])
+    u_val = ((xdot_des - xdot_val)*J_inv) + u_val
 
 
-tiltangle1 = data.sensordata[0]
-tiltvel1 = data.sensordata[1]
+    xdot_val = Matrix([[0.0], [0.0], [0.0] ,[0.0] ,[0.0] ,[0.0]])
 
-tiltangle2 = data.sensordata[2]
-tiltvel2 = data.sensordata[3]
-tiltangle3 = data.sensordata[4]
-tiltvel3 = data.sensordata[5]
 
-tiltangle4 = data.sensordata[6]
-tiltvel4 = data.sensordata[7]
-Kp = .005
-Kd = Kp/10
-control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
-control2 = -Kp*(tiltangle2-u_val[5]) - Kd*tiltvel2 # position control
-control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
-control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
+    tiltangle1 = data.sensordata[0]
+    tiltvel1 = data.sensordata[1]
 
-data.cntrl[0] = u_val[0]
-data.cntrl[1] = u_val[1]
-data.cntrl[2] = u_val[2]
-data.cntrl[3] = u_val[3]
-data.cntrl[4] = u_val[4]
-data.cntrl[5] = u_val[5]
-data.cntrl[6] = u_val[6]
-data.cntrl[7] = u_val[7]
+    tiltangle2 = data.sensordata[2]
+    tiltvel2 = data.sensordata[3]
+    tiltangle3 = data.sensordata[4]
+    tiltvel3 = data.sensordata[5]
+
+    tiltangle4 = data.sensordata[6]
+    tiltvel4 = data.sensordata[7]
+    Kp = .005
+    Kd = Kp/10
+    control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
+    control2 = -Kp*(tiltangle2-u_val[5]) - Kd*tiltvel2 # position control
+    control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
+    control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
+
+    data.cntrl[0] = u_val[0]
+    data.cntrl[1] = u_val[1]
+    data.cntrl[2] = u_val[2]
+    data.cntrl[3] = u_val[3]
+    data.cntrl[4] = u_val[4]
+    data.cntrl[5] = u_val[5]
+    data.cntrl[6] = u_val[6]
+    data.cntrl[7] = u_val[7]
     
 
     # print(curr_height, des_vel, act_vel, Gain, cntrl)
