@@ -42,18 +42,18 @@ def init_controller(model,data):
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
     xdot_des = Matrix( [[0.1],[0] ,[0.3] ,[0] ,[0] ,[0]])
     u_val = Matrix([[0.0], [0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0]])
-    u = Matrix([[T1], [T2] ,[T3] [T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
-    f = Matrix([x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2])
+    u = Matrix([ [T1], [T2] ,[T3] ,[T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
+    f = Matrix([[x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2]])
     pass
 
 def controller(model, data):
 #put the controller here. This function is called inside the simulation.
     global f,u, u_val, xdot_des, xdot_val
-
+    (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
     J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
     J_inv = J.pinv()
 
-    u_val = ((xdot_des - xdot_val)*J_inv) + u_val
+    u_val = (J_inv*(xdot_des - xdot_val)) + u_val
 
 
     xdot_val = Matrix([[0.0], [0.0], [0.0] ,[0.0] ,[0.0] ,[0.0]])
@@ -76,14 +76,14 @@ def controller(model, data):
     control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
     control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
 
-    data.cntrl[0] = u_val[0]
-    data.cntrl[1] = u_val[1]
-    data.cntrl[2] = u_val[2]
-    data.cntrl[3] = u_val[3]
-    data.cntrl[4] = u_val[4]
-    data.cntrl[5] = u_val[5]
-    data.cntrl[6] = u_val[6]
-    data.cntrl[7] = u_val[7]
+    data.ctrl[0] = u_val[0]
+    data.ctrl[1] = u_val[1]
+    data.ctrl[2] = u_val[2]
+    data.ctrl[3] = u_val[3]
+    data.ctrl[4] = u_val[4]
+    data.ctrl[5] = u_val[5]
+    data.ctrl[6] = u_val[6]
+    data.ctrl[7] = u_val[7]
     
 
     # print(curr_height, des_vel, act_vel, Gain, cntrl)
