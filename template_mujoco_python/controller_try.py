@@ -29,9 +29,9 @@ def init_controller(model,data):
     global f,u, u_val, xdot_des, xdot_val
     m = 1.0
     g = 9.81
-    Ixx = Iyy = Izz = 1.0
-    pitch_angle =0.0
-    roll_angle =0.0
+    Ixx, Iyy, Izz = 1.0, 1.0, 1.0
+    pitch_angle = 0.0
+    roll_angle = 0.0
     (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
     x_d2 = (T2* sp.sin(theta2) - T4*sp.sin(theta4) - m*g*sp.sin(pitch_angle))/m
     y_d2 = (T1* sp.sin(theta1) - T3*sp.sin(theta3) - m*g*sp.sin(roll_angle))/m
@@ -40,21 +40,21 @@ def init_controller(model,data):
     p_d2 = (T1* sp.cos(theta1) -T3*sp.cos(theta3))/Iyy
     yaw_d2 = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))/Izz
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
-    xdot_des = Matrix( [[0.1],[0] ,[0.3] ,[0] ,[0] ,[0]])
+    xdot_des = Matrix( [[0.0],[0.0] ,[0.01] ,[0] ,[0] ,[0]])
     u_val = Matrix([[0.0], [0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0]])
     u = Matrix([ [T1], [T2] ,[T3] ,[T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
     f = Matrix([[x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2]])
-    pass
+    
 
 def controller(model, data):
-#put the controller here. This function is called inside the simulation.
+    #put the controller here. This function is called inside the simulation.
     global f,u, u_val, xdot_des, xdot_val
+    
     (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
     J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
     J_inv = J.pinv()
 
     u_val = (J_inv*(xdot_des - xdot_val)) + u_val
-
 
     xdot_val = Matrix([[0.0], [0.0], [0.0] ,[0.0] ,[0.0] ,[0.0]])
 
@@ -71,26 +71,30 @@ def controller(model, data):
     tiltvel4 = data.sensordata[7]
     Kp = .005
     Kd = Kp/10
+
+    print(tiltangle1, tiltangle2, tiltangle3, tiltangle4)
+    
+
+    # u_val[4] = np.deg2rad(0)
+    # u_val[5] = np.deg2rad(0)
+    # u_val[6] = np.deg2rad(45)
+    # u_val[7] = np.deg2rad(0)
+
     control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
     control2 = -Kp*(tiltangle2-u_val[5]) - Kd*tiltvel2 # position control
     control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
     control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
 
+
     data.ctrl[0] = u_val[0]
     data.ctrl[1] = u_val[1]
     data.ctrl[2] = u_val[2]
     data.ctrl[3] = u_val[3]
-    data.ctrl[4] = u_val[4]
-    data.ctrl[5] = u_val[5]
-    data.ctrl[6] = u_val[6]
-    data.ctrl[7] = u_val[7]
-    
+    data.ctrl[4] = control1 # Light Green needs to be flipped
+    data.ctrl[5] = control2 # Dark Green is correct, should be orange
+    data.ctrl[6] = control3 # orange is correct, should be dark green
+    data.ctrl[7] = control4 # red, needs to be flipped
 
-    # print(curr_height, des_vel, act_vel, Gain, cntrl)
-
-
-
-    
    
 
     
