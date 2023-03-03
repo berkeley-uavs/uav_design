@@ -46,26 +46,28 @@
       <body name="a00" pos=".071 0.071 0.0" quat = ".924 0.0 0.0 0.383">
         <joint name="tilta00" type="hinge" axis="1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster0" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="0.5 1.0 0.5 1" mass="0.025"/>
+        <geom name="thruster0" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="0 1.0 0 1" mass="0.025"/>
         <site name="thruster0" type="cylinder"/>
       </body>
 
       <body name="a20" pos="-0.071 -0.071 0.0" quat = "-.383 0.0 0.0 0.924">
         <joint name="tilta20" type="hinge" axis="-1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster2" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster2" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="0.0 0.5 0.5 1" mass="0.025"/>
         <site name="thruster2" type="cylinder"/>
       </body>
+      
       <body name="a30" pos="0.071 -0.071 0.0" quat = ".383 0.0 0.0 0.924">
         <joint name="tilta30" type="hinge" axis="1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster3" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster3" type="cylinder" pos=" -0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0 1" mass="0.025"/>
         <site name="thruster3" type="cylinder"/>
       </body>
+      
       <body name="a40" pos="-0.071 0.071 0.0" quat = ".924 0.0 0.0 -.383">
         <joint name="tilta40" type="hinge" axis="-1 0 0"/>
         <geom type="box" size="0.05 0.01 0.0025"  rgba="0.5 0.5 0.5 1" mass="0.025"/>
-        <geom name="thruster4" type="cylinder" pos=" 0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
+        <geom name="thruster4" type="cylinder" pos="-0.029  0  0.01" size="0.05 0.0025"  rgba="1.0 0.5 0.5 1" mass="0.025"/>
         <site name="thruster4" type="cylinder"/>
       </body>
       
