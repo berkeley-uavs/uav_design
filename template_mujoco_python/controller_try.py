@@ -26,38 +26,68 @@ desiredangle = 0
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
-    global f,u, u_val, xdot_des, xdot_val
+    global f,u, u_val, xdot_des, xdot_val, desired_pos, current_pos, angular_velocity, x_val, des_vel
     m = 1.0
     g = 9.81
-    Ixx, Iyy, Izz = 1.0, 1.0, 1.0
-    pitch_angle = 0.0
-    roll_angle = 0.0
-    (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
+    Ixx = Iyy = Izz = 1.0
+    pitch_angle =0.0
+    roll_angle =0.0
+    (T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3')
     x_d2 = (T2* sp.sin(theta2) - T4*sp.sin(theta4) - m*g*sp.sin(pitch_angle))/m
     y_d2 = (T1* sp.sin(theta1) - T3*sp.sin(theta3) - m*g*sp.sin(roll_angle))/m
     z_d2 = (T1* sp.cos(theta1) + T2*sp.cos(theta2) + T3*sp.cos(theta3) + T4*sp.cos(theta4)- m*g*sp.cos(pitch_angle))/m
-    r_d2 = (T2* sp.cos(theta2) - T4*sp.cos(theta4))/Ixx
-    p_d2 = (T1* sp.cos(theta1) -T3*sp.cos(theta3))/Iyy
-    yaw_d2 = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))/Izz
+    n_r = (T2* sp.cos(theta2) - T4*sp.cos(theta4))
+    n_p = (T1* sp.cos(theta1) -T3*sp.cos(theta3))
+    n_y = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))
+    moments = Matrix([[n_r], [n_p], [n_y]])
+    Inertia_matrix = Matrix([[Ixx, 0, 0], [ 0, Iyy, 0], [0, 0, Izz]])
+    angular_velocity = Matrix([[w_1], [w_2], [w_3]])
+    omega = Matrix([[0, -w_3, w_2], [w_3, 0, -w_1], [-w_2, w_1,0]])
+    angular_accelerations = Inertia_matrix.inv() *(moments - omega*Inertia_matrix*angular_velocity )
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
-    xdot_des = Matrix( [[0.0],[0.0] ,[0.01] ,[0] ,[0] ,[0]])
+    xdot_des = Matrix( [[0.1],[0.0] ,[0.3] ,[0.0] ,[0.0] ,[0.0]])
+    des_vel = Matrix( [[0.1],[0.0] ,[0.3] ,[0.0] ,[0.0] ,[0.0]])
+
     u_val = Matrix([[0.0], [0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0]])
     u = Matrix([ [T1], [T2] ,[T3] ,[T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
-    f = Matrix([[x_d2], [y_d2], [z_d2], [r_d2], [p_d2], [yaw_d2]])
-    
+    f = Matrix([[x_d2], [y_d2], [z_d2], [angular_accelerations[0]], [angular_accelerations[1]], [angular_accelerations[2]]])
+    desired_pos = Matrix([[0.2], [0.0], [0.5], [0.0], [0.0], [0.0] ])
+    current_pos = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
+    x_val = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
+
+    pass
 
 def controller(model, data):
-    #put the controller here. This function is called inside the simulation.
-    global f,u, u_val, xdot_des, xdot_val
-    
-    (T1, T2, T3, T4, theta1, theta2, theta3, theta4) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4')
-    J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7])])
+#put the controller here. This function is called inside the simulation.
+    global f,u, u_val, xdot_des, xdot_val, angular_velocity, x_val, des_vel
+    T_v = 20.0
+    T_a = 15.0
+    (T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3')
+    J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7]), (w_1, x_val[3]),(w_2, x_val[4]),(w_3, x_val[5])])
+    print(u_val)
+    print("next")
     J_inv = J.pinv()
 
     u_val = (J_inv*(xdot_des - xdot_val)) + u_val
+    i =0
+    while i < len(u_val):
+        if(abs(u_val[i]) <.0001):
+            u_val[i] = 0.0
+        if(i>= 4 and abs(u_val[i]) > math.pi/2):
+            u_val[i] = np.sign(u_val[i])* abs(math.remainder(u_val[i], 2*math.pi))
 
-    xdot_val = Matrix([[0.0], [0.0], [0.0] ,[0.0] ,[0.0] ,[0.0]])
+        i = i+1
+    
+    
 
+    current_pos = Matrix([[data.qpos[0]* math.cos(math.pi/4) + data.qpos[1]* math.cos(math.pi/4)], [-data.qpos[0]* math.cos(math.pi/4) + data.qpos[1]* math.cos(math.pi/4)], [data.qpos[0]], [0.0], [0.0], [0.0]])
+    #x represents the state which is linear and angular velocities, xdot is accelerations 
+    #x_val = Matrix([[data.qvel[0]* math.cos(math.pi/4) + data.qvel[1]* math.cos(math.pi/4)], [-data.qvel[0]* math.cos(math.pi/4) + data.qvel[1]* math.cos(math.pi/4)], [data.qpos[0]], [0.0],[0.0], [0.0]])
+    x_val = Matrix([[data.sensordata[11]],[data.sensordata[12]],[data.sensordata[13]],[data.sensordata[14]],[data.sensordata[15]],[data.sensordata[16]] ])
+    #des_vel = (desired_pos - current_pos)/T_v
+    #xdot_des = (des_vel - x_val)/T_a
+    #xdot_val = Matrix([[data.sensordata[8],data.sensordata[9],data.sensordata[10]],[data.sensordata[14],data.sensordata[15],data.sensordata[16]] ])
+    #need to find gyroscope angular accelerations
 
     tiltangle1 = data.sensordata[0]
     tiltvel1 = data.sensordata[1]
@@ -71,30 +101,30 @@ def controller(model, data):
     tiltvel4 = data.sensordata[7]
     Kp = .005
     Kd = Kp/10
-
-    print(tiltangle1, tiltangle2, tiltangle3, tiltangle4)
-    
-
-    # u_val[4] = np.deg2rad(0)
-    # u_val[5] = np.deg2rad(0)
-    # u_val[6] = np.deg2rad(45)
-    # u_val[7] = np.deg2rad(0)
-
     control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
     control2 = -Kp*(tiltangle2-u_val[5]) - Kd*tiltvel2 # position control
     control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
     control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
 
-
     data.ctrl[0] = u_val[0]
     data.ctrl[1] = u_val[1]
     data.ctrl[2] = u_val[2]
     data.ctrl[3] = u_val[3]
-    data.ctrl[4] = control1 # Light Green needs to be flipped
-    data.ctrl[5] = control2 # Dark Green is correct, should be orange
-    data.ctrl[6] = control3 # orange is correct, should be dark green
-    data.ctrl[7] = control4 # red, needs to be flipped
+    data.ctrl[4] = u_val[4]
+    data.ctrl[5] = u_val[5]
+    data.ctrl[6] = u_val[6]
+    data.ctrl[7] = u_val[7]
+    
 
+    # print(curr_height, des_vel, act_vel, Gain, cntrl)
+    #print("pos")
+    #print(desired_pos, current_pos)
+    #print("vel")
+    #print(des_vel, x_val)
+    #print("acc")
+    #print(xdot_des, xdot_val)
+    #print("next")
+    
    
 
     
