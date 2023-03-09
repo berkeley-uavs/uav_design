@@ -36,7 +36,7 @@ def init_controller(model,data):
     p =0.0
     Ixx = Iyy = Izz = 1.0
     (w_1, w_2, w_3, roll_angle,pitch_angle) = sp.symbols('w_1, w_2, w_3, roll_angle, pitch_angle')
-    x = cp.Variable(shape=n)
+    x = cp.Variable(n)
     x_d2 = (x[1]* sp.sin(x[5]) - x[3]*sp.sin(x[7]) - m*g*sp.sin(pitch_angle))/m
     y_d2 = (x[0]* sp.sin(x[4]) - x[2]*sp.sin(x[6]) - m*g*sp.sin(roll_angle))/m
     z_d2 = (x[0]* sp.cos(x[4]) + x[1]*sp.cos(x[5]) + x[2]*sp.cos(x[6]) + x[3]*sp.cos(x[7])- m*g*sp.cos(roll_angle)*sp.cos(pitch_angle))/m

@@ -44,7 +44,7 @@ def init_controller(model,data):
     omega = Matrix([[0, -w_3, w_2], [w_3, 0, -w_1], [-w_2, w_1,0]])
     angular_accelerations = Inertia_matrix.inv() *(moments - omega*Inertia_matrix*angular_velocity )
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
-    xdot_des = Matrix( [[.0],[0.0] ,[.3] ,[0.0] ,[0.1] ,[0.0]])
+    xdot_des = Matrix( [[.5],[0.0] ,[1] ,[0.] ,[0.0] ,[0.0]])
     des_vel = Matrix( [[0.0],[0.0] ,[0.1] ,[0.0] ,[0.0] ,[0.0]])
     r = 0.0
     p =0.0
@@ -74,19 +74,19 @@ def controller(model, data):
     print("u_val")
 
     print(u_val)
-    u_val = (J_inv*(xdot_des - xdot_val)) + u_val
+    u_val = (J_inv*(xdot_des - xdot_val)) #+ u_val
    
     i =0
     while i < len(u_val):
         if(abs(u_val[i]) <.0001):
             u_val[i] = 0.0
-        if(i<4):
-            if((u_val[i]) < 0.0):
-                u_val[i] = 0
+        #if(i<4):
+            #%if((u_val[i]) < 0.0):
+                #u_val[i] = 0
         if(i>= 4):
             u_val[i]=  np.sign(u_val[i])* abs(math.remainder(u_val[i], 2*math.pi))
-            if (abs(u_val[i]) > math.pi/2):
-                u_val[i] = np.sign(u_val[i]) * math.radians(math.pi/2)
+            #if (abs(u_val[i]) > math.pi/2):
+                #u_val[i] = np.sign(u_val[i]) * math.radians(math.pi/2)
 
         i = i+1
 
@@ -103,7 +103,7 @@ def controller(model, data):
     #des_vel = (desired_pos - current_pos)/T_v
     #xdot_des = (des_vel - x_val)/T_a
     #xdot_val = Matrix([[data.sensordata[8]-g*sp.sin(pitch_angle)],[data.sensordata[9]-g*sp.sin(roll_angle)],[data.sensordata[10]- g*sp.cos(roll_angle)*sp.cos(pitch_angle) ],[(x_val[3] - last_ang_vel[0])/dt],[(x_val[4] - last_ang_vel[1])/dt],[(x_val[5] - last_ang_vel[2])/dt] ])
-    #xdot_val = xdot_val.subs([(roll_angle,0.0), (pitch_angle,0.0)])
+    #xdot_val = xdot_val.subs([(roll_angle,r), (pitch_angle,r)])
     r = x_val[3]*dt + r
     p = x_val[4]*dt + p
     #need to find gyroscope angular accelerations
@@ -130,6 +130,13 @@ def controller(model, data):
     control3 = -Kp*(tiltangle3-u_val[6]) - Kd*tiltvel3 # position control
     control4 = -Kp*(tiltangle4-u_val[7]) - Kd*tiltvel4 # position control
 
+    print(tiltangle1)
+    print(tiltangle2)
+
+    print(tiltangle3)
+
+    print(tiltangle4)
+
     #data.ctrl[0] = u_val[0]
     #data.ctrl[1] = u_val[1]
     #data.ctrl[2] = u_val[2]
@@ -138,10 +145,10 @@ def controller(model, data):
     data.ctrl[1] = u_val[1]
     data.ctrl[2] = u_val[2]
     data.ctrl[3] = u_val[3]
-    data.ctrl[4] = u_val[4]
-    data.ctrl[5] = u_val[5]
-    data.ctrl[6] = u_val[6]
-    data.ctrl[7] = u_val[7]
+    data.ctrl[4] = control1
+    data.ctrl[5] = control2
+    data.ctrl[6] = control3
+    data.ctrl[7] = control4
     print("xdot_val")
 
     print(xdot_val)
