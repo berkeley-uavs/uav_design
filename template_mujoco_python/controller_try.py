@@ -44,8 +44,8 @@ def init_controller(model,data):
     omega = Matrix([[0, -w_3, w_2], [w_3, 0, -w_1], [-w_2, w_1,0]])
     angular_accelerations = Inertia_matrix.inv() *(moments - omega*Inertia_matrix*angular_velocity )
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
-    xdot_des = Matrix( [[.2],[.0] ,[1.] ,[0.] ,[0.] ,[0.0]])
-    des_vel = Matrix( [[0.0],[0.0] ,[0.0] ,[0.0] ,[0.] ,[0.]])
+    xdot_des = Matrix( [[1],[.0] ,[5] ,[0.] ,[0.] ,[0.0]])
+    des_vel = Matrix( [[0.0],[0.0] ,[0.5] ,[0.0] ,[0.] ,[0.]])
     x = Matrix([[dx], [dy],[dz],[w_1], [w_2], [w_3]])
     r = 0.0
     p =0.0
@@ -77,7 +77,11 @@ def controller(model, data):
     
 
     print(u_val)
-    u_val = (J_inv*(xdot_des- A*x_val) )
+    feed_forward = (J_inv*(xdot_des- A*x_val) )
+    K = Matrix([[0.5, 0.5 ,0.5, 0.5, .5,.5], [.5, .5 ,.5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5],[.5, .5 ,.5 ,.5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5]])
+    Kv = K/4
+    feed_back = K*(des_vel-x_val) + Kv*xdot_val
+    u_val = feed_forward - feed_back
    
     i =0
     while i < len(u_val):
@@ -104,7 +108,7 @@ def controller(model, data):
     x_val = Matrix([[data.sensordata[11]],[data.sensordata[12]],[data.sensordata[13]],[data.sensordata[14]],[data.sensordata[15]],[data.sensordata[16]] ])
     
     #des_vel = (desired_pos - current_pos)/T_v
-    #xdot_des = (des_vel - x_val)/T_a
+    xdot_des = (des_vel - x_val)/T_a
     xdot_val = Matrix([[data.sensordata[8]-g*sp.sin(pitch_angle)],[data.sensordata[9]-g*sp.sin(roll_angle)],[data.sensordata[10]- g*sp.cos(roll_angle)*sp.cos(pitch_angle) ],[(x_val[3] - last_ang_vel[0])/dt],[(x_val[4] - last_ang_vel[1])/dt],[(x_val[5] - last_ang_vel[2])/dt] ])
     xdot_val = xdot_val.subs([(roll_angle,r), (pitch_angle,r)])
     r = x_val[3]*dt + r
