@@ -29,9 +29,9 @@ def init_controller(model,data):
     global f,u, u_val, xdot_des, xdot_val, desired_pos, current_pos, angular_velocity, x_val, des_vel,roll_angle, pitch_angle,r,p,x
     m = 1.0
     g = 9.81
-    Ixx = Iyy = Izz = 1.0
+    # Ixx = Iyy = Izz = 1.0
   
-    (T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3, roll_angle,pitch_angle,dx,dy,dz) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3, roll_angle, pitch_angle, dx,dy,dz')
+    (Ixx, Ixy, Ixz, Iyy, Iyz, Izz, T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3, roll_angle,pitch_angle,dx,dy,dz) = sp.symbols('Ixx, Ixy, Ixz, Iyy, Iyz, Izz,T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3, roll_angle, pitch_angle, dx,dy,dz')
     x_d2 = (T2* sp.sin(theta2) - T4*sp.sin(theta4) - m*g*sp.sin(pitch_angle))/m
     y_d2 = (T1* sp.sin(theta1) - T3*sp.sin(theta3) - m*g*sp.sin(roll_angle))/m
     z_d2 = (T1* sp.cos(theta1) + T2*sp.cos(theta2) + T3*sp.cos(theta3) + T4*sp.cos(theta4)- m*g*sp.cos(roll_angle)*sp.cos(pitch_angle))/m
@@ -39,10 +39,16 @@ def init_controller(model,data):
     n_p = (T1* sp.cos(theta1) -T3*sp.cos(theta3))
     n_y = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))
     moments = Matrix([[n_r], [n_p], [n_y]])
-    Inertia_matrix = Matrix([[Ixx, 0, 0], [ 0, Iyy, 0], [0, 0, Izz]])
-    angular_velocity = Matrix([[w_1], [w_2], [w_3]])
+    Inertia_matrix = Matrix([[Ixx, 0, 0], [0, Iyy, 0], [0, 0, Izz]])
+    angular_velocity = Matrix([[w_1, w_2, w_3]]).T
     omega = Matrix([[0, -w_3, w_2], [w_3, 0, -w_1], [-w_2, w_1,0]])
-    angular_accelerations = Inertia_matrix.inv() *(moments - omega*Inertia_matrix*angular_velocity )
+
+    angular_accelerations = Inertia_matrix.inv() * (moments - omega*Inertia_matrix*angular_velocity)
+    print(angular_accelerations[0])
+    print(angular_accelerations[1])
+    print(angular_accelerations[2])
+
+
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
     xdot_des = Matrix( [[1],[.0] ,[5] ,[0.] ,[0.] ,[0.0]])
     des_vel = Matrix( [[0.0],[0.0] ,[0.5] ,[0.0] ,[0.] ,[0.]])
@@ -56,8 +62,6 @@ def init_controller(model,data):
     current_pos = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
     x_val = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
 
-    pass
-
 def controller(model, data):
 #put the controller here. This function is called inside the simulation.
     global f,u, u_val, xdot_des, xdot_val, angular_velocity, x_val, des_vel, roll_angle, pitch_angle,r,p,x
@@ -67,16 +71,16 @@ def controller(model, data):
     dt = .01 #sampling rate
     (T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3,dx,dy,dz) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3,dx,dy,dz')
     J = f.jacobian(u).subs([(T1,u_val[0]), (T2,u_val[1]),(T3,u_val[2]), (T4,u_val[3]),(theta1,u_val[4]), (theta2,u_val[5]), (theta3,u_val[6]), (theta4,u_val[7]), (w_1, x_val[3]),(w_2, x_val[4]),(w_3, x_val[5]), (roll_angle, r), (pitch_angle,p)])
-    print(J)
+    # print(J)
     A = f.jacobian(x).subs([(w_1, x_val[3]),(w_2, x_val[4]),(w_3, x_val[5])])
     J_inv = J.pinv()
 
-    print("u_val")
+    # print("u_val")
 
-    print(u_val)
+    # print(u_val)
     
 
-    print(u_val)
+    # print(u_val)
     feed_forward = (J_inv*(xdot_des- A*x_val) )
     K = Matrix([[0.5, 0.5 ,0.5, 0.5, .5,.5], [.5, .5 ,.5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5],[.5, .5 ,.5 ,.5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5]])
     Kv = K/4
@@ -163,11 +167,11 @@ def controller(model, data):
     # print(curr_height, des_vel, act_vel, Gain, cntrl)
     #print("pos")
     #print(desired_pos, current_pos)
-    print("vel")
-    print(des_vel, x_val)
-    print("acc")
-    print(xdot_des, xdot_val)
-    print("next")
+    # print("vel")
+    # print(des_vel, x_val)
+    # print("acc")
+    # print(xdot_des, xdot_val)
+    # print("next")
     
    
 

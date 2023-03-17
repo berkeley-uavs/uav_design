@@ -27,7 +27,6 @@ desiredangle = 0
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
-     #initialize the controller here. This function is called once, in the beginning
     global f, xdot_des, xdot_val, angular_velocity, x_val,roll_angle, pitch_angle,r, p,x
     m = 1.0
     g = 9.81
@@ -71,13 +70,6 @@ def controller(model, data):
     print("Optimal value from CVXPY: {}".format(func.value))
     x_val = Matrix([[data.sensordata[11]],[data.sensordata[12]],[data.sensordata[13]],[data.sensordata[14]],[data.sensordata[15]],[data.sensordata[16]] ])
 
-
-    
-def set_torque_servo(actuator_no, flag):
-    if (flag==0):
-        model.actuator_gainprm[actuator_no, 0] = 0
-    else:
-        model.actuator_gainprm[actuator_no, 0] = 1
 
 def keyboard(window, key, scancode, act, mods):
     global des_height, desiredangle
