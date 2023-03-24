@@ -24,37 +24,43 @@ Gain = .025
 des_height = 0.5
 desiredangle = 0
 
+def RotToRPY(R):
+    R=R.reshape(3,3) #to remove the last dimension i.e., 3,3,1
+    phi = math.asin(R[1,2])
+    psi = math.atan2(-R[1,0]/math.cos(phi),R[1,1]/math.cos(phi))
+    theta = math.atan2(-R[0,2]/math.cos(phi),R[2,2]/math.cos(phi))
+    return phi,theta,psi
+
+
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
     global f,u, u_val, xdot_des, xdot_val, desired_pos, current_pos, angular_velocity, x_val, des_vel,roll_angle, pitch_angle,r,p,x
     m = 1.0
     g = 9.81
-    # Ixx = Iyy = Izz = 1.0
+    Ixx = Iyy = Izz = 1.0
   
-    (Ixx, Ixy, Ixz, Iyy, Iyz, Izz, T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3, roll_angle,pitch_angle,dx,dy,dz) = sp.symbols('Ixx, Ixy, Ixz, Iyy, Iyz, Izz,T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3, roll_angle, pitch_angle, dx,dy,dz')
+    (T1, T2, T3, T4, theta1, theta2, theta3, theta4, w_1, w_2, w_3, roll_angle,pitch_angle,dx,dy,dz) = sp.symbols('T1,T2,T3,T4,theta1,theta2,theta3,theta4, w_1, w_2, w_3, roll_angle, pitch_angle, dx,dy,dz')
     x_d2 = (T2* sp.sin(theta2) - T4*sp.sin(theta4) - m*g*sp.sin(pitch_angle))/m
     y_d2 = (T1* sp.sin(theta1) - T3*sp.sin(theta3) - m*g*sp.sin(roll_angle))/m
     z_d2 = (T1* sp.cos(theta1) + T2*sp.cos(theta2) + T3*sp.cos(theta3) + T4*sp.cos(theta4)- m*g*sp.cos(roll_angle)*sp.cos(pitch_angle))/m
     n_r = (T2* sp.cos(theta2) - T4*sp.cos(theta4))
     n_p = (T1* sp.cos(theta1) -T3*sp.cos(theta3))
     n_y = (T1* sp.sin(theta1) + T4*sp.sin(theta4)+T3*sp.sin(theta3) + T2*sp.sin(theta2))
+    
     moments = Matrix([[n_r], [n_p], [n_y]])
     Inertia_matrix = Matrix([[Ixx, 0, 0], [0, Iyy, 0], [0, 0, Izz]])
     angular_velocity = Matrix([[w_1, w_2, w_3]]).T
     omega = Matrix([[0, -w_3, w_2], [w_3, 0, -w_1], [-w_2, w_1,0]])
 
     angular_accelerations = Inertia_matrix.inv() * (moments - omega*Inertia_matrix*angular_velocity)
-    print(angular_accelerations[0])
-    print(angular_accelerations[1])
-    print(angular_accelerations[2])
 
 
     xdot_val = Matrix( [[0],[0],[0],[0],[0],[0]])
-    xdot_des = Matrix( [[1],[.0] ,[5] ,[0.] ,[0.] ,[0.0]])
-    des_vel = Matrix( [[0.0],[0.0] ,[0.5] ,[0.0] ,[0.] ,[0.]])
+    xdot_des = Matrix( [[.0],[.0] ,[1] ,[0.0] ,[0.01] ,[0.0]])
+    # des_vel = Matrix( [[0.0],[0.0] ,[0.5] ,[0.0] ,[0.] ,[0.]])
     x = Matrix([[dx], [dy],[dz],[w_1], [w_2], [w_3]])
     r = 0.0
-    p =0.0
+    p = 0.0
     u_val = Matrix([[0.0], [0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0] ,[0.0]])
     u = Matrix([ [T1], [T2] ,[T3] ,[T4] ,[theta1] ,[theta2] ,[theta3] ,[theta4]])
     f = Matrix([[x_d2], [y_d2], [z_d2], [angular_accelerations[0]], [angular_accelerations[1]], [angular_accelerations[2]]])
@@ -84,8 +90,8 @@ def controller(model, data):
     feed_forward = (J_inv*(xdot_des- A*x_val) )
     K = Matrix([[0.5, 0.5 ,0.5, 0.5, .5,.5], [.5, .5 ,.5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5],[.5, .5 ,.5 ,.5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5]])
     Kv = K/4
-    feed_back = K*(des_vel-x_val) + Kv*xdot_val
-    u_val = feed_forward - feed_back
+    # feed_back = K*(des_vel-x_val) + Kv*xdot_val
+    u_val = feed_forward
    
     i =0
     while i < len(u_val):
@@ -112,7 +118,7 @@ def controller(model, data):
     x_val = Matrix([[data.sensordata[11]],[data.sensordata[12]],[data.sensordata[13]],[data.sensordata[14]],[data.sensordata[15]],[data.sensordata[16]] ])
     
     #des_vel = (desired_pos - current_pos)/T_v
-    xdot_des = (des_vel - x_val)/T_a
+    # xdot_des = (des_vel - x_val)/T_a
     xdot_val = Matrix([[data.sensordata[8]-g*sp.sin(pitch_angle)],[data.sensordata[9]-g*sp.sin(roll_angle)],[data.sensordata[10]- g*sp.cos(roll_angle)*sp.cos(pitch_angle) ],[(x_val[3] - last_ang_vel[0])/dt],[(x_val[4] - last_ang_vel[1])/dt],[(x_val[5] - last_ang_vel[2])/dt] ])
     xdot_val = xdot_val.subs([(roll_angle,r), (pitch_angle,r)])
     r = x_val[3]*dt + r
@@ -126,14 +132,13 @@ def controller(model, data):
         i = i+1
     tiltangle1 = data.sensordata[0]
     tiltvel1 = data.sensordata[1]
-
     tiltangle2 = data.sensordata[2]
     tiltvel2 = data.sensordata[3]
     tiltangle3 = data.sensordata[4]
     tiltvel3 = data.sensordata[5]
-
     tiltangle4 = data.sensordata[6]
     tiltvel4 = data.sensordata[7]
+    
     Kp = .005
     Kd = Kp/10
     control1 = -Kp*(tiltangle1-u_val[4]) - Kd*tiltvel1 # position control
@@ -172,15 +177,16 @@ def controller(model, data):
     # print("acc")
     # print(xdot_des, xdot_val)
     # print("next")
-    
-   
+    spatial_coords = data.qpos[0:3]
+    R = data.site_xmat[0].reshape(3,3)
+    body_coords = R@spatial_coords
+    orientation = np.array(RotToRPY(R)).reshape(3,1)
+    orientation = R@orientation
+    print(orientation[1])
 
     
-def set_torque_servo(actuator_no, flag):
-    if (flag==0):
-        model.actuator_gainprm[actuator_no, 0] = 0
-    else:
-        model.actuator_gainprm[actuator_no, 0] = 1
+
+   
 
 def keyboard(window, key, scancode, act, mods):
     global des_height, desiredangle

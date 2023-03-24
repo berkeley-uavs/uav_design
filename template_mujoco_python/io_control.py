@@ -1,8 +1,10 @@
 import mujoco as mj
 from mujoco.glfw import glfw
 import numpy as np
-import os
+import sympy as sp
+from sympy import *
 import math
+import os
 
 xml_path = 'quadrotor.xml' #xml file (assumes this is in the same folder as this file)
 simend = 200 #simulation time
@@ -20,16 +22,62 @@ lasty = 0
 curr_height = 0.0 
 Gain = .025
 des_height = 0.5
-desiredangle = 0.01
+desiredangle = 0
+
+m = 1 # drone_mass
+g = 9.81
+
+
+def lie_derivative(subscript, s, fn):
+    # partial of fn with respect to s * subscript
+    return fn.jacobian(s) * subscript
+
+def get_beta_matrix(g, f, h, s):
+    beta = zeros(h.shape[0], g.shape[1])
+    for p in range(h.shape[0]):
+        for m in range(g.shape[1]):
+            beta[p, m] = lie_derivative(g.col(m), s, lie_derivative(f, s, h.row(p)))
+    return beta
+
+
+
 
 def init_controller(model,data):
+    global h, v, beta, alpha, q, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, x, y, z, roll, pitch, yaw, droll, dpitch, dyaw
     #initialize the controller here. This function is called once, in the beginning
-    global Gain, curr_height
-    Gain = .025
-    curr_height = 0.0
+    (Ixx, Iyy, Izz, theta1, theta2, theta3, theta4, theta1_dot, theta2_dot, theta3_dot, theta4_dot, T1, T2, T3, T4, x, y, z, roll, pitch, yaw, dx, dy, dz, droll, dpitch, dyaw) = sp.symbols('Ixx, Iyy, Izz, theta1, theta2, theta3, theta4, theta1_dot, theta2_dot, theta3_dot, theta4_dot, T1, T2, T3, T4, x, y, z, roll, pitch, yaw, dx, dy, dz, droll, dpitch, dyaw')
+    q = Matrix([[x, y, z, roll, pitch, yaw]]).T
+    q_dot = Matrix([[dx, dy, dz, droll, dpitch, dyaw]]).T
+    s = Matrix([[q], [q_dot], [theta1], [theta2], [theta3], [theta4]])
+    u = Matrix([[T1, T2, T3, T4, theta1_dot, theta2_dot, theta3_dot, theta4_dot]]).T
+    g_mat = Matrix([[sp.zeros(6,8)], 
+                [0, sin(theta2)/m, 0, -sin(theta4)/m, 0, 0, 0, 0],
+                [sin(theta1)/m, 0, -sin(theta3)/m, 0, 0, 0, 0, 0],
+                [cos(theta1)/m, cos(theta2)/m, cos(theta3)/m, cos(theta4)/m, 0, 0, 0, 0],
+                [0, cos(theta2)/Ixx, 0, -cos(theta4)/Ixx, 0, 0, 0, 0],
+                [cos(theta1)/Iyy, 0, -cos(theta3)/Iyy, 0, 0, 0, 0, 0],
+                [sin(theta1)/Izz, sin(theta2)/Izz, sin(theta3)/Izz, sin(theta4)/Izz, 0, 0, 0, 0],
+                [0, 0, 0, 0, 1, 0, 0, 0],
+                [0, 0, 0, 0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 0, 0, 1]])
 
 
-    pass
+    temp = Matrix([[-g*sin(pitch), -g*sin(roll), -g*cos(roll)*cos(pitch), dpitch*dyaw*((Iyy-Izz)/Ixx), droll*dyaw*((Izz-Ixx)/Iyy), droll*dpitch*((Ixx-Iyy)/Izz), 0, 0, 0, 0]]).T
+    f = q_dot[:, :]
+    f = f.col_join(temp)
+    init_q_desired = Matrix([[0, 0, 0, 0, 0, 0]]).T
+    h = init_q_desired - q
+    Kp = 0.5
+    Kd = 0.05
+    v = -Kp * h
+    beta = get_beta_matrix(g_mat, f, h, s)
+    alpha = lie_derivative(f, s, lie_derivative(f, s, h)) # lf_lf_h
+
+    
+
+    # print(alpha)
+    # print(u)
 
 def RotToRPY(R):
     R=R.reshape(3,3) #to remove the last dimension i.e., 3,3,1
@@ -39,70 +87,63 @@ def RotToRPY(R):
     return phi,theta,psi
 
 def controller(model, data):
-    #put the controller here. This function is called inside the simulation.
-    global Gain, curr_height, des_height, desiredangle
-    t_const_v = 1.0
+    global h, v, beta, alpha, q, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, dpitch, droll, dyaw, roll, pitch, yaw, x, y, z
+    
 
-    des_vel = (des_height - curr_height/t_const_v)
-    act_vel = data.qvel[2]
-    diff_old = (des_vel - act_vel)
-    cntrl = Gain*diff_old
-    if(des_vel <=0):
-        cntrl = 0
-    if abs((des_vel - act_vel)) - abs(diff_old):
-        Gain = Gain - 0.001
-    else:
-        Gain = Gain + 0.001
-    curr_height = data.qpos[2] 
-    # print(curr_height, des_vel, act_vel, Gain, cntrl)
-
-#horizontal control
-
+    
     tiltangle1 = data.sensordata[0]
     tiltvel1 = data.sensordata[1]
-
     tiltangle2 = data.sensordata[2]
     tiltvel2 = data.sensordata[3]
     tiltangle3 = data.sensordata[4]
     tiltvel3 = data.sensordata[5]
-
     tiltangle4 = data.sensordata[6]
     tiltvel4 = data.sensordata[7]
-        
-    
-    
-    Kp = .005
-    Kd = Kp/10
-    control1 = -Kp*(tiltangle1-desiredangle) - Kd*tiltvel1 # position control
-    control2 = -Kp*(tiltangle2-desiredangle) - Kd*tiltvel2 # position control
-    control3 = -Kp*(tiltangle3-desiredangle) - Kd*tiltvel3 # position control
-    control4 = -Kp*(tiltangle4-desiredangle) - Kd*tiltvel4 # position control
+    pitch_vel = data.sensordata[8]
+    roll_vel = data.sensordata[9]
+    yaw_vel = data.sensordata[10]
 
-    
-    # print(des_height, desiredangle)
-    data.ctrl[0] = cntrl
-    data.ctrl[1] = cntrl
-    data.ctrl[2] = cntrl
-    data.ctrl[3] = cntrl
-    data.ctrl[4] = control1
-    data.ctrl[5] = control2
-    data.ctrl[6] = control3
-    data.ctrl[7] = control4
-    
-    spatial_coords = data.qpos[0:3].reshape(3,1)
+    spatial_coords = data.qpos[0:3]
     R = data.site_xmat[0].reshape(3,3)
-    # print(R@spatial_coords)
-    orientation = np.array(RotToRPY(R)).reshape(3,1)
-    # print(orientation)
-    orientation = R@orientation
-    print(orientation)
-
+    body_coords = R@spatial_coords
+    orientation = R@np.array(RotToRPY(R)).reshape(3,1)
     
-def set_torque_servo(actuator_no, flag):
-    if (flag==0):
-        model.actuator_gainprm[actuator_no, 0] = 0
-    else:
-        model.actuator_gainprm[actuator_no, 0] = 1
+    b = np.hstack((np.zeros((3, 3)), R.T))
+    a = np.hstack((R.T, np.zeros((3, 3))))
+    rot = np.vstack((a, b))
+    q_desired = rot@np.array([1, 1, 0, 0, 0, 0])
+    q_desired = Matrix([q_desired]).T
+    
+    h = q_desired - q
+    Kp = .005
+    v = -Kp * h
+
+    beta = beta.subs({theta1:tiltangle1, theta2:tiltangle2, theta3:tiltangle3, theta4:tiltangle4, Ixx:1, Iyy:1, Izz:1})
+    v = v.subs({x:body_coords[0], y:body_coords[1], z:body_coords[2], roll:float(orientation[0]), pitch:float(orientation[1]), yaw:float(orientation[2])})
+    print(v)
+    alpha = alpha.subs({roll:0, pitch:0, yaw:0, Ixx:1, Iyy:1, Izz:1, dpitch:pitch_vel, droll:roll_vel, dyaw:yaw_vel})
+    
+    u = beta.pinv()*(v-alpha)
+
+
+    # control1 = 
+    # control1 = -Kp*(tiltangle1-u[4]) - Kd*tiltvel1 # position control
+    # control2 = -Kp*(tiltangle2-u[5]) - Kd*tiltvel2 # position control
+    # control3 = -Kp*(tiltangle3-u[6]) - Kd*tiltvel3 # position control
+    # control4 = -Kp*(tiltangle4-u[7]) - Kd*tiltvel4 # position control
+
+    # data.ctrl[0] = u[0]
+    # data.ctrl[1] = u[1]
+    # data.ctrl[2] = u[2]
+    # data.ctrl[3] = u[3]
+    data.ctrl[4] = u[4]
+    data.ctrl[5] = u[5]
+    data.ctrl[6] = u[6]
+    data.ctrl[7] = u[7]
+
+    pass
+    
+   
 
 def keyboard(window, key, scancode, act, mods):
     global des_height, desiredangle
@@ -110,18 +151,6 @@ def keyboard(window, key, scancode, act, mods):
         mj.mj_resetData(model, data)
         mj.mj_forward(model, data)
     
-    if act == glfw.PRESS and key == glfw.KEY_UP:
-        des_height += 0.1
-    
-    if act == glfw.PRESS and key == glfw.KEY_DOWN:
-        des_height -= 0.1
-    
-    if act == glfw.PRESS and key == glfw.KEY_RIGHT:
-        desiredangle += 0.01
-    
-    if act == glfw.PRESS and key == glfw.KEY_LEFT:
-        desiredangle -= 0.01
-
 
 
 def mouse_button(window, button, act, mods):
