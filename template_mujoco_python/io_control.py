@@ -5,6 +5,7 @@ import sympy as sp
 from sympy import *
 import math
 import os
+from scipy.optimize import minimize
 
 xml_path = 'quadrotor.xml' #xml file (assumes this is in the same folder as this file)
 simend = 200 #simulation time
@@ -43,7 +44,7 @@ def get_beta_matrix(g, f, h, s):
 
 
 def init_controller(model,data):
-    global h, v, beta, alpha, q, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, x, y, z, roll, pitch, yaw, droll, dpitch, dyaw
+    global h, v, beta, alpha, q,q_dot, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, x, y, z, roll, pitch, yaw, droll, dpitch, dyaw,f,g,s
     #initialize the controller here. This function is called once, in the beginning
     (Ixx, Iyy, Izz, theta1, theta2, theta3, theta4, theta1_dot, theta2_dot, theta3_dot, theta4_dot, T1, T2, T3, T4, x, y, z, roll, pitch, yaw, dx, dy, dz, droll, dpitch, dyaw) = sp.symbols('Ixx, Iyy, Izz, theta1, theta2, theta3, theta4, theta1_dot, theta2_dot, theta3_dot, theta4_dot, T1, T2, T3, T4, x, y, z, roll, pitch, yaw, dx, dy, dz, droll, dpitch, dyaw')
     q = Matrix([[x, y, z, roll, pitch, yaw]]).T
@@ -86,8 +87,12 @@ def RotToRPY(R):
     theta = math.atan2(-R[0,2]/math.cos(phi),R[2,2]/math.cos(phi))
     return phi,theta,psi
 
+
+
+
+
 def controller(model, data):
-    global h, v, beta, alpha, q, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, dpitch, droll, dyaw, roll, pitch, yaw, x, y, z
+    global h, v, beta, alpha, q,q_dot, theta1, theta2, theta3, theta4, Ixx, Iyy, Izz, dpitch, droll, dyaw, roll, pitch, yaw, x, y, z,f,g,s
     
 
     
@@ -111,35 +116,60 @@ def controller(model, data):
     b = np.hstack((np.zeros((3, 3)), R.T))
     a = np.hstack((R.T, np.zeros((3, 3))))
     rot = np.vstack((a, b))
-    q_desired = rot@np.array([1, 1, 0, 0, 0, 0])
+    q_desired = rot@np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
     q_desired = Matrix([q_desired]).T
     
     h = q_desired - q
     Kp = .005
-    v = -Kp * h
+    v = -(Kp * h)
+    costs = Matrix([.1, .1, .1, .1, .5, .5, .5, .5])
 
-    beta = beta.subs({theta1:tiltangle1, theta2:tiltangle2, theta3:tiltangle3, theta4:tiltangle4, Ixx:1, Iyy:1, Izz:1})
-    v = v.subs({x:body_coords[0], y:body_coords[1], z:body_coords[2], roll:float(orientation[0]), pitch:float(orientation[1]), yaw:float(orientation[2])})
-    print(v)
-    alpha = alpha.subs({roll:0, pitch:0, yaw:0, Ixx:1, Iyy:1, Izz:1, dpitch:pitch_vel, droll:roll_vel, dyaw:yaw_vel})
+    beta_val = beta.subs({theta1:tiltangle1, theta2:tiltangle2, theta3:tiltangle3, theta4:tiltangle4, Ixx:1, Iyy:1, Izz:1})
+    v_val = v.subs({x:body_coords[0], y:body_coords[1], z:body_coords[2], roll:float(orientation[0]), pitch:float(orientation[1]), yaw:float(orientation[2])})
+    #print(v_val)
+    alpha_val = alpha.subs({roll:0, pitch:0, yaw:0, Ixx:1, Iyy:1, Izz:1, dpitch:pitch_vel, droll:roll_vel, dyaw:yaw_vel})
     
-    u = beta.pinv()*(v-alpha)
+    #u_val = beta_val.pinv()*(v_val-alpha_val) 
+    # #replace with optimization -> minimize some cost function W*u, subject to alpha + Beta*u = v
+    
+    def f(u):
+        return costs[0]*u[0]+ costs[1]*u[1]+ costs[2]*u[2]+costs[3]*u[3]+costs[4]*u[4]+costs[5]*u[5]+ costs[6]*u[6]+costs[7]*u[7]
+
+    def eq_constraint(u):
+        return np.array(alpha_val).astype(np.float64) + np.matmul((np.array(beta_val).astype(np.float64)),(np.array([[u[0]],[u[1]],[u[2]],[u[3]],[u[4]],[u[5]],[u[6]],[u[7]]]))) - (np.array(v_val).astype(np.float64))
+    def ineq_constraint(u):
+        return np.array(alpha_val).astype(np.float64) + np.matmul((np.array(beta_val).astype(np.float64)),(np.array([[u[0]],[u[1]],[u[2]],[u[3]],[u[4]],[u[5]],[u[6]],[u[7]]]))) - (np.array(v_val).astype(np.float64))
+
+    con1 = {'type': 'eq', 'fun': eq_constraint}
+    con2 = {'type': 'ineq', 'fun': ineq_constraint}
+    cons = [con1, con2]
+
+    u0 = [0,0,0,0,0,0,0,0]
+    b1 = (-1000, 1000)
+    #b2 = (-math.pi/2,math.pi/2) doesnt work cuz our inputs are ang velocites now
+    bnds = (b1,b1,b1,b1, b1, b1, b1, b1)
+    print(eq_constraint(u0))
+    u_val =  minimize(f, u0, method='SLSQP',bounds = bnds, constraints=cons)
+
+    
 
 
+    #ddoutput = (((h.jacobian(q))*q_dot).jacobian(s))*(f + g*u)
+    #print(ddoutput)
     # control1 = 
     # control1 = -Kp*(tiltangle1-u[4]) - Kd*tiltvel1 # position control
     # control2 = -Kp*(tiltangle2-u[5]) - Kd*tiltvel2 # position control
     # control3 = -Kp*(tiltangle3-u[6]) - Kd*tiltvel3 # position control
     # control4 = -Kp*(tiltangle4-u[7]) - Kd*tiltvel4 # position control
 
-    # data.ctrl[0] = u[0]
-    # data.ctrl[1] = u[1]
-    # data.ctrl[2] = u[2]
-    # data.ctrl[3] = u[3]
-    data.ctrl[4] = u[4]
-    data.ctrl[5] = u[5]
-    data.ctrl[6] = u[6]
-    data.ctrl[7] = u[7]
+    data.ctrl[0] = u_val[0]
+    data.ctrl[1] = u_val[1]
+    data.ctrl[2] = u_val[2]
+    data.ctrl[3] = u_val[3]
+    data.ctrl[4] = u_val[4]
+    data.ctrl[5] = u_val[5]
+    data.ctrl[6] = u_val[6]
+    data.ctrl[7] = u_val[7]
 
     pass
     
