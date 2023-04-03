@@ -38,6 +38,7 @@ def get_beta_matrix(g, f, h, s):
     for p in range(h.shape[0]):
         for m in range(g.shape[1]):
             beta[p, m] = lie_derivative(g.col(m), s, lie_derivative(f, s, h.row(p)))
+            #print(beta[p,m])
     return beta
 
 
@@ -73,6 +74,7 @@ def init_controller(model,data):
     Kd = 0.05
     v = -Kp * h
     beta = get_beta_matrix(g_mat, f, h, s)
+    #print(beta.pinv())
     alpha = lie_derivative(f, s, lie_derivative(f, s, h)) # lf_lf_h
 
     
@@ -116,20 +118,24 @@ def controller(model, data):
     b = np.hstack((np.zeros((3, 3)), R.T))
     a = np.hstack((R.T, np.zeros((3, 3))))
     rot = np.vstack((a, b))
-    q_desired = rot@np.array([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+    q_desired = rot@np.array([3.1, 0.0, 2.1, 0.0, 0.0, 0.0])
     q_desired = Matrix([q_desired]).T
     
     h = q_desired - q
-    Kp = .005
+    #print(h)
+    Kp = .5
     v = -(Kp * h)
     costs = Matrix([.1, .1, .1, .1, .5, .5, .5, .5])
-
-    beta_val = beta.subs({theta1:tiltangle1, theta2:tiltangle2, theta3:tiltangle3, theta4:tiltangle4, Ixx:1, Iyy:1, Izz:1})
+    #print(beta)
+    beta_val = beta.subs({theta1:tiltangle1, theta2:tiltangle2, theta3:tiltangle3, theta4:tiltangle4, Ixx:1.2, Iyy:1.1, Izz:1.0})
     v_val = v.subs({x:body_coords[0], y:body_coords[1], z:body_coords[2], roll:float(orientation[0]), pitch:float(orientation[1]), yaw:float(orientation[2])})
     #print(v_val)
-    alpha_val = alpha.subs({roll:0, pitch:0, yaw:0, Ixx:1, Iyy:1, Izz:1, dpitch:pitch_vel, droll:roll_vel, dyaw:yaw_vel})
-    
-    #u_val = beta_val.pinv()*(v_val-alpha_val) 
+    #print(beta_val)
+    alpha_val = alpha.subs({roll:0, pitch:0, yaw:0, Ixx:1.2, Iyy:1.1, Izz:1.0, dpitch:pitch_vel, droll:roll_vel, dyaw:yaw_vel})
+    measurements = [body_coords[0], body_coords[1], body_coords[2], orientation[0], orientation[1], orientation[2]]
+    print(measurements)
+    u_val = beta_val.pinv()*(v_val-alpha_val) 
+    #print(u_val)
     # #replace with optimization -> minimize some cost function W*u, subject to alpha + Beta*u = v
     
     def f(u):
@@ -148,8 +154,8 @@ def controller(model, data):
     b1 = (-1000, 1000)
     #b2 = (-math.pi/2,math.pi/2) doesnt work cuz our inputs are ang velocites now
     bnds = (b1,b1,b1,b1, b1, b1, b1, b1)
-    print(eq_constraint(u0))
-    u_val =  minimize(f, u0, method='SLSQP',bounds = bnds, constraints=cons)
+    #print(eq_constraint(u0))
+    #u_val =  minimize(f, u0, method='SLSQP',bounds = bnds, constraints=cons)
 
     
 
