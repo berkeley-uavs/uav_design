@@ -7,7 +7,7 @@ import math
 import os
 from scipy.optimize import minimize
 
-xml_path = 'quadrotor.xml' #xml file (assumes this is in the same folder as this file)
+xml_path = '../quadrotor.xml' #xml file (assumes this is in the same folder as this file)
 simend = 200 #simulation time
 print_camera_config = 0 #set to 1 to print camera config
                         #this is useful for initializing view of the model)
