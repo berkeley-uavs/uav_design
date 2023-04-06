@@ -24,10 +24,12 @@ Gain = .025
 des_height = 0.5
 desiredangle = 0
 
-m = 1  # drone_mass
+m = .3  # drone_mass
 g = 9.81
 arm_length = 1
-Ixx = Iyy = Izz = 1
+Ixx = 1.2
+Iyy = 1.1
+Izz = 1.0
 
 
 model_type = "continuous"
@@ -37,6 +39,7 @@ estimator = None
 
 
 def init_controller(model, data):
+    global  mpc_controller, simulator,x0,estimator
     model_type = "continuous"
     mpc_model = do_mpc.model.Model(model_type)
 
@@ -134,40 +137,78 @@ def init_controller(model, data):
     mpc_controller.set_objective(mterm=mterm, lterm=lterm)
     # Input force is implicitly restricted through the objective.
     # mpc_controller.set_rterm(force=0.1)
-    # mpc_controller.bounds['lower','_u','force'] = -4
-    # mpc_controller.bounds['upper','_u','force'] = 4
+    mpc_controller.bounds['lower','_u','u'] = [0,0,0,0,-pi/2,-pi/2,-pi/2,-pi/2]
+    mpc_controller.bounds['upper','_u','u'] = [inf,inf,inf,inf,pi/2,pi/2,pi/2,pi/2]
     mpc_controller.setup()
     estimator = do_mpc.estimator.StateFeedback(mpc_model)
     
-    x0 = np.array([[0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0]]).T
+    x0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]).T
     mpc_controller.x0 = x0
     estimator.x0 = x0
     mpc_controller.set_initial_guess()
 
     u0 = mpc_controller.make_step(x0)
-    print(u0)
+    simulator = do_mpc.simulator.Simulator(mpc_model)
+    params_simulator = {
+    # Note: cvode doesn't support DAE systems.
+    'integration_tool': 'idas',
+    'abstol': 1e-10,
+    'reltol': 1e-10,
+    't_step': 0.04
+}
+
+    simulator.set_param(**params_simulator)
+    simulator.setup()
+    mpc_controller.reset_history()
+
+   
+
+        
 
     pass
 
 
 def controller(model, data):
-
+    global  mpc_controller, simulator, x0,estimator
     # Kp = .005
     # Kd = Kp/10
-
+    tiltangle1 = data.sensordata[0]
+    tiltvel1 = data.sensordata[1]
+    tiltangle2 = data.sensordata[2]
+    tiltvel2 = data.sensordata[3]
+    tiltangle3 = data.sensordata[4]
+    tiltvel3 = data.sensordata[5]
+    tiltangle4 = data.sensordata[6]
+    tiltvel4 = data.sensordata[7]
+    pitch_vel = data.sensordata[8]
+    roll_vel = data.sensordata[9]
+    yaw_vel = data.sensordata[10]
     # control1 = -Kp*(tiltangle1-0) - Kd*tiltvel1  # position control
     # control2 = -Kp*(tiltangle2-0) - Kd*tiltvel2  # position control
     # control3 = -Kp*(tiltangle3-0) - Kd*tiltvel3  # position control
     # control4 = -Kp*(tiltangle4-0) - Kd*tiltvel4  # position control
 
-    # data.ctrl[0] = u_val[0]
-    # data.ctrl[1] = -u_val[1]
-    # data.ctrl[2] = u_val[2]
-    # data.ctrl[3] = -u_val[3]
-    # data.ctrl[4] = control1
-    # data.ctrl[5] = control2
-    # data.ctrl[6] = control3
-    # data.ctrl[7] = control4
+ 
+    u0 = mpc_controller.make_step(x0)
+    y_next = simulator.make_step(u0)
+    x0 = estimator.make_step(y_next)
+    print(u0)
+    Kp = 0.5
+    Kd = 0.1
+
+    control1 = -Kp*(tiltangle1-u0[4]) - Kd*tiltvel1  # position control
+    control2 = -Kp*(tiltangle2-u0[5]) - Kd*tiltvel2  # position control
+    control3 = -Kp*(tiltangle3 - u0[6]) - Kd*tiltvel3  # position control
+    control4 = -Kp*(tiltangle4- u0[7]) - Kd*tiltvel4  # position control
+    data.ctrl[0] = u0[0]
+    data.ctrl[1] = u0[1]
+    data.ctrl[2] = u0[2]
+    data.ctrl[3] = u0[3]
+    data.ctrl[4] = control1
+    data.ctrl[5] = control2
+    data.ctrl[6] = control3
+    data.ctrl[7] = control4
+
     pass
 
 
