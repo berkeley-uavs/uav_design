@@ -108,7 +108,8 @@ def init_controller(model, data):
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
     
-    mpc_model.set_expression(expr_name='cost', expr=sum1((pos - [0, 0, 3])**2))
+    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-0)**2 + (pos[1]-0)**2 + (pos[2]-5)**2) +.00002*sqrt((u[0])**2 + (u[1])**2 + (u[2])**2 + (u[3])**2) ))
+    mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-0)**2 + (pos[1]-0)**2 + (pos[2]-5)**2)))
 
     mpc_model.setup()
 
@@ -132,19 +133,21 @@ def init_controller(model, data):
     mpc_controller.set_param(**setup_mpc)
 
 
-    mterm = mpc_model.aux['cost']
+    mterm = mpc_model.aux['mterm']
     lterm = mpc_model.aux['cost']
 
     mpc_controller.set_objective(mterm=mterm, lterm=lterm)
     # Input force is implicitly restricted through the objective.
-    mpc_controller.set_rterm(u=1e-10)
-    tilt_limit = pi/100
+    mpc_controller.set_rterm(u=1e-4)
+    tilt_limit = pi/2
     thrust_limit = 10
-    u_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit, tilt_limit, tilt_limit, tilt_limit, tilt_limit])
+    u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit, tilt_limit, tilt_limit, tilt_limit, tilt_limit])
+    u_lower_limits =  np.array([0, 0, 0, 0, -tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
+
     x_limits = np.array([inf, inf, inf, pi/2, pi/2, pi/2, 5, 5, 5, 1, 1, 1])
 
-    mpc_controller.bounds['lower','_u','u'] = -u_limits
-    mpc_controller.bounds['upper','_u','u'] = u_limits
+    mpc_controller.bounds['lower','_u','u'] = u_lower_limits
+    mpc_controller.bounds['upper','_u','u'] = u_upper_limits
 
     mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
     mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
@@ -178,8 +181,8 @@ def controller(model, data):
     # u[5] = 0
     # u[6] = 0
     # u[7] = 0
-    print(x[2])
-    print(u[:4])
+    print(x[0:3])
+    print(u)
     apply_control(data, u)
 
     # print(x[0:6])
