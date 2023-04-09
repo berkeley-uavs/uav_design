@@ -4,6 +4,7 @@ from mujoco.glfw import glfw
 import numpy as np
 import do_mpc
 from casadi import *
+import math
 
 # xml file (assumes this is in the same folder as this file)
 xml_path = '../quadrotor.xml'
@@ -24,7 +25,7 @@ Gain = .025
 des_height = 0.5
 desiredangle = 0
 
-m = .3  # drone_mass
+m = .5  # drone_mass
 g = 9.81
 arm_length = 1
 Ixx = 1.2
@@ -36,12 +37,12 @@ model_type = "continuous"
 mpc_model = do_mpc.model.Model(model_type)
 mpc_controller = None
 estimator = None
+u = None
+x = None
 
 
 def init_controller(model, data):
-    global  mpc_controller, simulator,x0,estimator
-    model_type = "continuous"
-    mpc_model = do_mpc.model.Model(model_type)
+    global  mpc_controller
 
     pos = mpc_model.set_variable('states',  'pos', (3, 1))
     theta = mpc_model.set_variable('states',  'theta', (3, 1))
@@ -107,7 +108,7 @@ def init_controller(model, data):
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
     
-    mpc_model.set_expression(expr_name='cost', expr=sum1((pos - [1, 5, 0])**2 + theta**2))
+    mpc_model.set_expression(expr_name='cost', expr=sum1((pos - [0, 0, 3])**2))
 
     mpc_model.setup()
 
@@ -115,17 +116,17 @@ def init_controller(model, data):
     mpc_controller = do_mpc.controller.MPC(mpc_model)
 
     setup_mpc = {
-        'n_horizon': 10,
-        'n_robust': 0,
+        'n_horizon': 5,
+        'n_robust': 1,
         'open_loop': 0,
-        't_step': 0.04,
+        't_step': 0.001,
         'state_discretization': 'collocation',
         'collocation_type': 'radau',
         'collocation_deg': 3,
         'collocation_ni': 1,
         'store_full_solution': True,
         # Use MA27 linear solver in ipopt for faster calculations:
-        'nlpsol_opts': {'ipopt.linear_solver': 'mumps'}
+        'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0, 'ipopt.sb': 'yes', 'print_time':0}
     }
     
     mpc_controller.set_param(**setup_mpc)
@@ -136,42 +137,79 @@ def init_controller(model, data):
 
     mpc_controller.set_objective(mterm=mterm, lterm=lterm)
     # Input force is implicitly restricted through the objective.
-    # mpc_controller.set_rterm(force=0.1)
-    mpc_controller.bounds['lower','_u','u'] = [0,0,0,0,-pi/2,-pi/2,-pi/2,-pi/2]
-    mpc_controller.bounds['upper','_u','u'] = [inf,inf,inf,inf,pi/2,pi/2,pi/2,pi/2]
+    mpc_controller.set_rterm(u=1e-10)
+    tilt_limit = pi/100
+    thrust_limit = 10
+    u_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit, tilt_limit, tilt_limit, tilt_limit, tilt_limit])
+    x_limits = np.array([inf, inf, inf, pi/2, pi/2, pi/2, 5, 5, 5, 1, 1, 1])
+
+    mpc_controller.bounds['lower','_u','u'] = -u_limits
+    mpc_controller.bounds['upper','_u','u'] = u_limits
+
+    mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
+    mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
+
+    mpc_controller.bounds['lower','_x','theta'] = -x_limits[3:6]
+    mpc_controller.bounds['upper','_x','theta'] = x_limits[3:6]
+
+    mpc_controller.bounds['lower','_x','dpos'] = -x_limits[6:9]
+    mpc_controller.bounds['upper','_x','dpos'] = x_limits[6:9]
+
+    mpc_controller.bounds['lower','_x','dtheta'] = -x_limits[9:12]
+    mpc_controller.bounds['upper','_x','dtheta'] = x_limits[9:12]
+
     mpc_controller.setup()
-    estimator = do_mpc.estimator.StateFeedback(mpc_model)
     
-    x0 = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]).T
-    mpc_controller.x0 = x0
-    estimator.x0 = x0
+
+    mpc_controller.x0 = get_drone_state(data)
     mpc_controller.set_initial_guess()
 
-    u0 = mpc_controller.make_step(x0)
-    simulator = do_mpc.simulator.Simulator(mpc_model)
-    params_simulator = {
-    # Note: cvode doesn't support DAE systems.
-    'integration_tool': 'idas',
-    'abstol': 1e-10,
-    'reltol': 1e-10,
-    't_step': 0.04
-}
 
-    simulator.set_param(**params_simulator)
-    simulator.setup()
-    mpc_controller.reset_history()
 
-   
 
-        
+
+def controller(model, data):
+    global  mpc_controller
+ 
+    x = get_drone_state(data)
+    u = mpc_controller.make_step(x)
+    # apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
+    # u[4] = 0
+    # u[5] = 0
+    # u[6] = 0
+    # u[7] = 0
+    print(x[2])
+    print(u[:4])
+    apply_control(data, u)
+
+    # print(x[0:6])
+
+    
+    
 
     pass
 
 
-def controller(model, data):
-    global  mpc_controller, simulator, x0,estimator
-    # Kp = .005
-    # Kd = Kp/10
+def RotToRPY(R):
+    R=R.reshape(3,3) #to remove the last dimension i.e., 3,3,1
+    phi = math.asin(R[1,2])
+    psi = math.atan2(-R[1,0]/math.cos(phi),R[1,1]/math.cos(phi))
+    theta = math.atan2(-R[0,2]/math.cos(phi),R[2,2]/math.cos(phi))
+    return phi,theta,psi
+
+def get_drone_state(data):
+    R = data.site_xmat[0].reshape(3,3)
+    roll, pitch, yaw = RotToRPY(R)
+    x = data.qpos[0]
+    y = data.qpos[1]
+    z = data.qpos[2]
+    
+    current_state = [x, y, z, roll, pitch, yaw]
+    current_state.extend(get_sensor_data(data)[8:])
+    return np.array(current_state)
+
+
+def get_sensor_data(data):
     tiltangle1 = data.sensordata[0]
     tiltvel1 = data.sensordata[1]
     tiltangle2 = data.sensordata[2]
@@ -180,36 +218,41 @@ def controller(model, data):
     tiltvel3 = data.sensordata[5]
     tiltangle4 = data.sensordata[6]
     tiltvel4 = data.sensordata[7]
-    pitch_vel = data.sensordata[8]
-    roll_vel = data.sensordata[9]
-    yaw_vel = data.sensordata[10]
-    # control1 = -Kp*(tiltangle1-0) - Kd*tiltvel1  # position control
-    # control2 = -Kp*(tiltangle2-0) - Kd*tiltvel2  # position control
-    # control3 = -Kp*(tiltangle3-0) - Kd*tiltvel3  # position control
-    # control4 = -Kp*(tiltangle4-0) - Kd*tiltvel4  # position control
+    x_vel = data.sensordata[8]
+    y_vel = data.sensordata[9]
+    z_vel = data.sensordata[10]
+    pitch_vel = data.sensordata[11]
+    roll_vel = data.sensordata[12]
+    yaw_vel = data.sensordata[12]
+    
+    return [tiltangle1, tiltvel1,
+            tiltangle2, tiltvel2,
+            tiltangle3, tiltvel3,
+            tiltangle4, tiltvel4,
+            x_vel, y_vel, z_vel,
+            pitch_vel, roll_vel, yaw_vel]
 
- 
-    u0 = mpc_controller.make_step(x0)
-    y_next = simulator.make_step(u0)
-    x0 = estimator.make_step(y_next)
-    print(u0)
-    Kp = 0.5
-    Kd = 0.1
 
-    control1 = -Kp*(tiltangle1-u0[4]) - Kd*tiltvel1  # position control
-    control2 = -Kp*(tiltangle2-u0[5]) - Kd*tiltvel2  # position control
-    control3 = -Kp*(tiltangle3 - u0[6]) - Kd*tiltvel3  # position control
-    control4 = -Kp*(tiltangle4- u0[7]) - Kd*tiltvel4  # position control
-    data.ctrl[0] = u0[0]
-    data.ctrl[1] = u0[1]
-    data.ctrl[2] = u0[2]
-    data.ctrl[3] = u0[3]
-    data.ctrl[4] = control1
-    data.ctrl[5] = control2
-    data.ctrl[6] = control3
-    data.ctrl[7] = control4
+def apply_control(data, u):
+    sensor_data = get_sensor_data(data)
+    Kp = .005
+    Kd = Kp/10
+    
+    tilt1 = -Kp*(sensor_data[0]-u[4]) - Kd*sensor_data[1]  # position control
+    tilt2 = -Kp*(sensor_data[2]-u[5]) - Kd*sensor_data[3]  # position control
+    tilt3 = -Kp*(sensor_data[4]-u[6]) - Kd*sensor_data[5]  # position control
+    tilt4 = -Kp*(sensor_data[6]-u[7]) - Kd*sensor_data[7]  # position control
+    data.ctrl[0] = u[0]
+    data.ctrl[1] = u[1]
+    data.ctrl[2] = u[2]
+    data.ctrl[3] = u[3]
+    data.ctrl[4] = tilt1
+    data.ctrl[5] = tilt2
+    data.ctrl[6] = tilt3
+    data.ctrl[7] = tilt4
 
-    pass
+
+
 
 
 def keyboard(window, key, scancode, act, mods):
@@ -333,7 +376,7 @@ while not glfw.window_should_close(window):
 
     while (data.time - time_prev < 1.0/60.0):
         mj.mj_step(model, data)
-
+    
     if (data.time >= simend):
         break
 

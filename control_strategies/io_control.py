@@ -1,10 +1,12 @@
+import os
 import mujoco as mj
 from mujoco.glfw import glfw
 import numpy as np
 import sympy as sp
 from sympy import *
 import math
-import os
+
+
 from scipy.optimize import minimize
 
 xml_path = '../quadrotor.xml' #xml file (assumes this is in the same folder as this file)
@@ -178,14 +180,14 @@ def controller(model, data):
     control3 = -Kp*(tiltangle3-0) - Kd*tiltvel3 # position control
     control4 = -Kp*(tiltangle4-0) - Kd*tiltvel4 # position control
 
-    data.ctrl[0] = u_val[0]
-    data.ctrl[1] = -u_val[1]
-    data.ctrl[2] = u_val[2]
-    data.ctrl[3] = -u_val[3]
-    data.ctrl[4] = control1
-    data.ctrl[5] = control2
-    data.ctrl[6] = control3
-    data.ctrl[7] = control4
+    # data.ctrl[0] = u_val[0]
+    # data.ctrl[1] = -u_val[1]
+    # data.ctrl[2] = u_val[2]
+    # data.ctrl[3] = -u_val[3]
+    # data.ctrl[4] = control1
+    # data.ctrl[5] = control2
+    # data.ctrl[6] = control3
+    # data.ctrl[7] = control4
     
    
 

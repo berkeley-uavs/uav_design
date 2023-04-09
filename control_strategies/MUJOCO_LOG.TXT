@@ -1,0 +1,51 @@
+Sat Apr  8 16:29:02 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1400.
+
+Sat Apr  8 16:29:21 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.1400.
+
+Sat Apr  8 17:10:39 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:10:59 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:11:22 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:11:45 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:11:59 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:12:58 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:13:07 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:13:59 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:14:32 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:14:58 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:15:22 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 17:16:05 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 5. The simulation is unstable. Time = 0.0400.
+
+Sat Apr  8 19:39:30 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 1. The simulation is unstable. Time = 0.7000.
+
+Sat Apr  8 19:45:31 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.6800.
+
+Sat Apr  8 19:46:37 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.2600.
+
