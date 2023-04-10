@@ -41,8 +41,10 @@ u = None
 x = None
 
 
+
+
 def init_controller(model, data):
-    global  mpc_controller
+    global  mpc_controller, mpc_model,waypoints, curr_waypoint
 
     pos = mpc_model.set_variable('states',  'pos', (3, 1))
     theta = mpc_model.set_variable('states',  'theta', (3, 1))
@@ -56,6 +58,7 @@ def init_controller(model, data):
 
     ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
     ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
+    target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
 
     mpc_model.set_rhs('pos', dpos)
     mpc_model.set_rhs('theta', dtheta)
@@ -91,6 +94,7 @@ def init_controller(model, data):
     ddroll = ddtheta[0]
     ddpitch = ddtheta[1]
     ddyaw = ddtheta[2]
+   
 
     euler_lagrange = vertcat(
         # 1
@@ -109,14 +113,14 @@ def init_controller(model, data):
     )
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
-    
-    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-.3)**2 + (pos[1]-.3)**2 + (pos[2]-1)**2) +.00002*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
+    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00002*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
     mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-.3)**2 + (pos[1]-.3)**2 + (pos[2]-1)**2)))
 
     mpc_model.setup()
 
 
     mpc_controller = do_mpc.controller.MPC(mpc_model)
+   
 
     setup_mpc = {
         'n_horizon': 5,
@@ -133,7 +137,13 @@ def init_controller(model, data):
     }
     
     mpc_controller.set_param(**setup_mpc)
-
+    tvp_template = mpc_controller.get_tvp_template()
+    n_horizon = 5
+    def tvp_fun(t_now):
+        for k in range(n_horizon+1):
+                tvp_template['_tvp',k,'target_point'] = [0.0,0.0,0.0]
+        return tvp_template
+    mpc_controller.set_tvp_fun(tvp_fun)
 
     mterm = mpc_model.aux['mterm']
     lterm = mpc_model.aux['cost']
@@ -174,15 +184,39 @@ def init_controller(model, data):
 
     mpc_controller.x0 = get_drone_state(data)
     mpc_controller.set_initial_guess()
+    
+    waypoints = []
+    curr_waypoint = [0,0.5,1.0]
+    waypoints.append([.5,.5,1.5])
+    waypoints.append([.3,.3,2.0])
+
+    point_index = 0
 
 
+def norm_vec(x1,x2):
+    sum =0
+    for i in range(len(x1)):
+        sum = (x1[i] -x2[i])**2 + sum
+    sum = sqrt(sum) 
+    return sum 
 
 
-
-def controller(model, data):
-    global  mpc_controller
- 
+def controller(model, data, ):
+    global  mpc_controller, mpc_model, waypoints, curr_waypoint
+    
     x = get_drone_state(data)
+    curr_dist = norm_vec(x[0:3], curr_waypoint)
+    if( curr_dist< .2):
+        curr_waypoint = waypoints.pop(0)
+    tvp_template = mpc_controller.get_tvp_template()
+    n_horizon = 5
+    def tvp_fun(t_now):
+        for k in range(n_horizon+1):
+                tvp_template['_tvp',k,'target_point'] = curr_waypoint
+        return tvp_template
+    mpc_controller.set_tvp_fun(tvp_fun)
+
+
     u = mpc_controller.make_step(x)
     # apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
     # u[4] = 0
@@ -190,10 +224,12 @@ def controller(model, data):
     # u[6] = 0
     # u[7] = 0
     print(x[0:3])
-    print(u)
+    #print(u)
+    print(curr_dist)
+    print(curr_waypoint)
     apply_control(data, u)
 
-    # print(x[0:6])
+    #print(x[0:6])
 
     
     
