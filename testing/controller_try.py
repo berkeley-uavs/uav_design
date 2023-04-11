@@ -34,7 +34,7 @@ def RotToRPY(R):
 
 def init_controller(model,data):
     #initialize the controller here. This function is called once, in the beginning
-    global f,u, u_val, xdot_des, xdot_val, desired_pos, current_pos, angular_velocity, x_val, des_vel,roll_angle, pitch_angle,r,p,x
+    global f,u, u_val, xdot_des, xdot_val, desired_pos, current_pos, angular_velocity, x_val, des_vel,roll_angle, pitch_angle,r,p,x, last_xval
     m = 1.0
     g = 9.81
     Ixx = Iyy = Izz = 1.0
@@ -67,10 +67,11 @@ def init_controller(model,data):
     desired_pos = Matrix([[0.0], [0.0], [0.5], [0.0], [0.0], [0.0] ])
     current_pos = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
     x_val = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
+    last_val = Matrix([[0.0], [0.0], [0.0], [0.0], [0.0], [0.0] ])
 
 def controller(model, data):
 #put the controller here. This function is called inside the simulation.
-    global f,u, u_val, xdot_des, xdot_val, angular_velocity, x_val, des_vel, roll_angle, pitch_angle,r,p,x
+    global f,u, u_val, xdot_des, xdot_val, angular_velocity, x_val, des_vel, roll_angle, pitch_angle,r,p,x, last_xval
     T_v = 1
     T_a = .2
     g = 9.81
@@ -87,11 +88,11 @@ def controller(model, data):
     
 
     # print(u_val)
-    feed_forward = (J_inv*(xdot_des- A*x_val) )
-    K = Matrix([[0.5, 0.5 ,0.5, 0.5, .5,.5], [.5, .5 ,.5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5],[.5, .5 ,.5 ,.5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5]])
-    Kv = K/4
+    u_val = (J_inv*(xdot_des- A*(x_val-last_xval) )) + u_val
+    #K = Matrix([[0.5, 0.5 ,0.5, 0.5, .5,.5], [.5, .5 ,.5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5, .5, .5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5],[.5, .5 ,.5 ,.5, .5,.5],[.5, .5 ,.5 ,.5 ,.5,.5]])
+    #Kv = K/4
     # feed_back = K*(des_vel-x_val) + Kv*xdot_val
-    u_val = feed_forward
+   
    
     i =0
     while i < len(u_val):
@@ -114,7 +115,7 @@ def controller(model, data):
     #x represents the state which is linear and angular velocities, xdot is accelerations 
     #x_val = Matrix([[data.qvel[0]* math.cos(math.pi/4) + data.qvel[1]* math.cos(math.pi/4)], [-data.qvel[0]* math.cos(math.pi/4) + data.qvel[1]* math.cos(math.pi/4)], [data.qpos[0]], [0.0],[0.0], [0.0]])
     last_ang_vel = [x_val[3], x_val[4], x_val[5]]
-
+    last_xval = x_val
     x_val = Matrix([[data.sensordata[11]],[data.sensordata[12]],[data.sensordata[13]],[data.sensordata[14]],[data.sensordata[15]],[data.sensordata[16]] ])
     
     #des_vel = (desired_pos - current_pos)/T_v
