@@ -98,11 +98,11 @@ def init_controller(model, data):
 
     euler_lagrange = vertcat(
         # 1
-        m*ddx - T2*sin(theta2) + T4*sin(theta4) + g*sin(pitch),
+        m*ddx - T2*sin(theta2) + T4*sin(theta4) + m*g*sin(pitch),
         # 2
-        m*ddy - T1*sin(theta1) + T3*sin(theta3) + g*sin(roll),
+        m*ddy - T1*sin(theta1) + T3*sin(theta3) + m*g*sin(roll),
         # 3
-        m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) - g*cos(roll)*cos(pitch),
+        m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) + m*g*cos(roll)*cos(pitch),
         # 4
         Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dy - Izz*dpitch*dy),
         # 5
@@ -111,10 +111,11 @@ def init_controller(model, data):
         Izz*ddyaw - T1*sin(theta1)*arm_length - T2*sin(theta2)*arm_length - T3*sin(theta3)*arm_length - T4*sin(theta4)*arm_length - (Ixx*droll*dpitch - Iyy*droll*dpitch)
 
     )
+    #print(euler_lagrange[2])
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
-    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00002*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
-    mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-.3)**2 + (pos[1]-.3)**2 + (pos[2]-1)**2)))
+    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.000009*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
+    mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
 
     mpc_model.setup()
 
@@ -154,13 +155,13 @@ def init_controller(model, data):
     mpc_controller.set_rterm(u_ti=1e-3)
 
     tilt_limit = pi/2
-    thrust_limit = 10
+    thrust_limit = 50
     u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
     u_lower_limits =  np.array([0, 0, 0, 0])
     u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
     u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
-    x_limits = np.array([inf, inf, inf, pi/2, pi/2, pi/2, 5, 5, 5, 1, 1, 1])
+    x_limits = np.array([inf, inf, inf, pi/2, pi/2, pi/2, .1, .1, .1, 1, 1, 1])
 
     mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
     mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
@@ -186,7 +187,7 @@ def init_controller(model, data):
     mpc_controller.set_initial_guess()
     
     waypoints = []
-    curr_waypoint = [0,0.5,1.0]
+    curr_waypoint = [0.0,0.0,1.0]
     waypoints.append([.5,.5,1.5])
     waypoints.append([.3,.3,2.0])
 
@@ -194,11 +195,11 @@ def init_controller(model, data):
 
 
 def norm_vec(x1,x2):
-    sum =0
+    sum1 =0
     for i in range(len(x1)):
-        sum = (x1[i] -x2[i])**2 + sum
-    sum = sqrt(sum) 
-    return sum 
+        sum1 = (x1[i] -x2[i])**2 + sum1
+    sum1 = sqrt(sum1) 
+    return sum1
 
 
 def controller(model, data, ):
@@ -206,7 +207,7 @@ def controller(model, data, ):
     
     x = get_drone_state(data)
     curr_dist = norm_vec(x[0:3], curr_waypoint)
-    if( curr_dist< .2):
+    if( curr_dist< .0001):
         curr_waypoint = waypoints.pop(0)
     tvp_template = mpc_controller.get_tvp_template()
     n_horizon = 5
@@ -218,13 +219,13 @@ def controller(model, data, ):
 
 
     u = mpc_controller.make_step(x)
-    # apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
+    #apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
     # u[4] = 0
     # u[5] = 0
     # u[6] = 0
     # u[7] = 0
-    print(x[0:3])
-    #print(u)
+    print(x[0:6])
+    print(u)
     print(curr_dist)
     print(curr_waypoint)
     apply_control(data, u)

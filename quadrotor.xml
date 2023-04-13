@@ -97,10 +97,10 @@
     </body>
   </worldbody>
     <actuator>
-      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 5. 0. 0. .1" site="thruster0"/>
-      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 5. 0. 0. .1" site="thruster3"/>
-      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 5. 0. 0. -.1" site="thruster2"/>
-      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 5. 0. 0. -.1" site="thruster4"/>
+      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 1. 0. 0. .1" site="thruster0"/>
+      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 1. 0. 0. .1" site="thruster3"/>
+      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 1. 0. 0. -.1" site="thruster2"/>
+      <motor ctrllimited="true" ctrlrange="-10.0 10.0" gear="0  0. 1. 0. 0. -.1" site="thruster4"/>
       <motor gear="1" joint="tilta00"/>
       <motor gear="1" joint="tilta30"/>
       <motor gear="1" joint="tilta20"/>
