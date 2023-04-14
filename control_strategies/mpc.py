@@ -44,7 +44,7 @@ x = None
 
 
 def init_controller(model, data):
-    global  mpc_controller, mpc_model,waypoints, curr_waypoint
+    global  mpc_controller, mpc_model,waypoints, curr_waypoint,u_val
 
     pos = mpc_model.set_variable('states',  'pos', (3, 1))
     theta = mpc_model.set_variable('states',  'theta', (3, 1))
@@ -59,34 +59,38 @@ def init_controller(model, data):
     ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
     ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
     target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
+    last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
+    last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
+
+
 
     mpc_model.set_rhs('pos', dpos)
     mpc_model.set_rhs('theta', dtheta)
     mpc_model.set_rhs('dpos', ddpos)
     mpc_model.set_rhs('dtheta', ddtheta)
 
-    T1 = u_th[0]
-    T2 = u_th[1]
-    T3 = u_th[2]
-    T4 = u_th[3]
-    theta1 = u_ti[0]
-    theta2 = u_ti[1]
-    theta3 = u_ti[2]
-    theta4 = u_ti[3]
+    T1 = last_input[0]
+    T2 = last_input[1]
+    T3 = last_input[2]
+    T4 = last_input[3]
+    theta1 = last_input[4]
+    theta2 = last_input[5]
+    theta3 = last_input[6]
+    theta4 = last_input[7]
 
-    x = pos[0]
-    y = pos[1]
-    z = pos[2]
-    roll = theta[0]
-    pitch = theta[1]
-    yaw = theta[2]
+    x = last_state[0]
+    y = last_state[1]
+    z = last_state[2]
+    roll = last_state[3]
+    pitch = last_state[4]
+    yaw = last_state[5]
 
-    dx = dpos[0]
-    dy = dpos[1]
-    dz = dpos[2]
-    droll = dtheta[0]
-    dpitch = dtheta[1]
-    dyaw = dtheta[2]
+    dx = last_state[6]
+    dy = last_state[7]
+    dz = last_state[8]
+    droll = last_state[9]
+    dpitch = last_state[10]
+    dyaw = last_state[11]
 
     ddx = ddpos[0]
     ddy = ddpos[1]
@@ -95,26 +99,65 @@ def init_controller(model, data):
     ddpitch = ddtheta[1]
     ddyaw = ddtheta[2]
    
-
-    euler_lagrange = vertcat(
-        # 1
-        m*ddx - T2*sin(theta2) + T4*sin(theta4) + m*g*sin(pitch),
+    f = vertcat(
+        (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
         # 2
-        m*ddy - T1*sin(theta1) + T3*sin(theta3) + m*g*sin(roll),
+        (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
         # 3
-        m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) + m*g*cos(roll)*cos(pitch),
+        (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
         # 4
-        Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dy - Izz*dpitch*dy),
+        ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy + Izz*dpitch*dy))/Ixx,
         # 5
-        Iyy*ddpitch - T1*cos(theta1)*arm_length + T3*cos(theta3)*arm_length - (-Ixx*droll*dy + Izz*droll*dy),
+        (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
         # 6
-        Izz*ddyaw - T1*sin(theta1)*arm_length - T2*sin(theta2)*arm_length - T3*sin(theta3)*arm_length - T4*sin(theta4)*arm_length - (Ixx*droll*dpitch - Iyy*droll*dpitch)
-
+        (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz
     )
-    #print(euler_lagrange[2])
+
+
+   # euler_lagrange = vertcat(
+        # 1
+        #m*ddx - T2*sin(theta2) + T4*sin(theta4) + m*g*sin(pitch),
+        # 2
+        #m*ddy - T1*sin(theta1) + T3*sin(theta3) + m*g*sin(roll),
+        # 3
+        #m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) + m*g*cos(roll)*cos(pitch),
+        # 4
+        #Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dy - Izz*dpitch*dy),
+        # 5
+        #Iyy*ddpitch - T1*cos(theta1)*arm_length + T3*cos(theta3)*arm_length - (-Ixx*droll*dy + Izz*droll*dy),
+        # 6
+        #Izz*ddyaw - T1*sin(theta1)*arm_length - T2*sin(theta2)*arm_length - T3*sin(theta3)*arm_length - T4*sin(theta4)*arm_length - (Ixx*droll*dpitch - Iyy*droll*dpitch)
+
+    #)
+
+    u_vec = vertcat(
+        u_th,
+        u_ti
+    )
+    state_vec = vertcat(
+        pos,
+        theta,
+        dpos,
+        dtheta,
+    )
+   
+    A = jacobian(f, last_state)
+    B = jacobian(f, last_input)
+    result_vec = vertcat(
+        ddx,
+        ddy,
+        ddz,
+        ddroll,
+        ddpitch,
+        ddyaw,
+    )
+    euler_lagrange = result_vec - A@(state_vec-last_state) - B@(u_vec-last_input)
+
+    print(euler_lagrange)
+    
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
-    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.000009*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
+    mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.0000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
     mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
 
     mpc_model.setup()
@@ -124,7 +167,7 @@ def init_controller(model, data):
    
 
     setup_mpc = {
-        'n_horizon': 5,
+        'n_horizon': 7,
         'n_robust': 1,
         'open_loop': 0,
         't_step': 0.001,
@@ -143,6 +186,9 @@ def init_controller(model, data):
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = [0.0,0.0,0.0]
+                tvp_template['_tvp',k, 'last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+                tvp_template['_tvp',k, 'last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
@@ -191,7 +237,7 @@ def init_controller(model, data):
     waypoints.append([.5,.5,1.5])
     waypoints.append([.3,.3,2.0])
 
-    point_index = 0
+    u_val = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 
 
 def norm_vec(x1,x2):
@@ -203,7 +249,7 @@ def norm_vec(x1,x2):
 
 
 def controller(model, data, ):
-    global  mpc_controller, mpc_model, waypoints, curr_waypoint
+    global  mpc_controller, mpc_model, waypoints, curr_waypoint,u_val
     
     x = get_drone_state(data)
     curr_dist = norm_vec(x[0:3], curr_waypoint)
@@ -214,21 +260,23 @@ def controller(model, data, ):
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = curr_waypoint
+                tvp_template['_tvp',k, 'last_state'] = x
+                tvp_template['_tvp',k, 'last_input'] = u_val
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
 
-    u = mpc_controller.make_step(x)
+    u_val = mpc_controller.make_step(x)
     #apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
     # u[4] = 0
     # u[5] = 0
     # u[6] = 0
     # u[7] = 0
     print(x[0:6])
-    print(u)
+    print(u_val)
     print(curr_dist)
     print(curr_waypoint)
-    apply_control(data, u)
+    apply_control(data, u_val)
 
     #print(x[0:6])
 
