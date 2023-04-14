@@ -61,3 +61,48 @@ WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Ti
 Wed Apr 12 19:35:48 2023
 WARNING: Nan, Inf or huge value in QACC at DOF 3. The simulation is unstable. Time = 7.9600.
 
+Fri Apr 14 03:14:05 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 6. The simulation is unstable. Time = 2.2900.
+
+Fri Apr 14 03:33:16 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 2.2800.
+
+Fri Apr 14 03:46:21 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.8600.
+
+Fri Apr 14 03:47:08 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.8600.
+
+Fri Apr 14 03:50:05 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.8600.
+
+Fri Apr 14 03:50:42 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 1.8600.
+
+Fri Apr 14 03:51:34 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:51:57 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:52:27 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:52:56 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:53:33 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:53:54 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 03:54:10 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 3. The simulation is unstable. Time = 0.9600.
+
+Fri Apr 14 03:54:43 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+
+Fri Apr 14 04:00:26 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 4. The simulation is unstable. Time = 4.2800.
+

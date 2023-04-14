@@ -117,10 +117,11 @@
       <jointvel name="tiltvel2" joint="tilta20"/>
       <jointpos name="tiltangle4" joint="tilta40"/>
       <jointvel name="tiltvel4" joint="tilta40"/>
-      
-      <gyro name="rpyvel" site="body"/>
-      <accelerometer name="xyzacc" site="body"/>
       <velocimeter name="xyzvel" site="body"/>
+      <gyro name="rpyvel" site="body"/>
+      
+      <accelerometer name="xyzacc" site="body"/>
+      
       
 
 

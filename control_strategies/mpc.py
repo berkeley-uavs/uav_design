@@ -33,7 +33,7 @@ Iyy = 1.1
 Izz = 1.0
 
 
-model_type = "continuous"
+model_type = "discrete"
 mpc_model = do_mpc.model.Model(model_type)
 mpc_controller = None
 estimator = None
@@ -61,6 +61,8 @@ def init_controller(model, data):
     target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
     last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
     last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
+    drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
+
 
 
 
@@ -114,7 +116,7 @@ def init_controller(model, data):
     )
 
 
-   # euler_lagrange = vertcat(
+    #euler_lagrange = vertcat(
         # 1
         #m*ddx - T2*sin(theta2) + T4*sin(theta4) + m*g*sin(pitch),
         # 2
@@ -151,9 +153,9 @@ def init_controller(model, data):
         ddpitch,
         ddyaw,
     )
-    euler_lagrange = result_vec - A@(state_vec-last_state) - B@(u_vec-last_input)
+    euler_lagrange = (result_vec-drone_acc) - A@(state_vec-last_state) - B@(u_vec-last_input)
 
-    print(euler_lagrange)
+    #print(euler_lagrange)
     
 
     mpc_model.set_alg('euler_lagrange', euler_lagrange)
@@ -182,13 +184,13 @@ def init_controller(model, data):
     
     mpc_controller.set_param(**setup_mpc)
     tvp_template = mpc_controller.get_tvp_template()
-    n_horizon = 5
+    n_horizon = 7
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = [0.0,0.0,0.0]
                 tvp_template['_tvp',k, 'last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
                 tvp_template['_tvp',k, 'last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-
+                tvp_template['_tvp',k, 'drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
@@ -253,15 +255,18 @@ def controller(model, data, ):
     
     x = get_drone_state(data)
     curr_dist = norm_vec(x[0:3], curr_waypoint)
-    if( curr_dist< .0001):
+    if( curr_dist< .000000000000000000001):
         curr_waypoint = waypoints.pop(0)
+    n_horizon = 7
+    x_acc = get_drone_acc(data)
+    print(x_acc)
     tvp_template = mpc_controller.get_tvp_template()
-    n_horizon = 5
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = curr_waypoint
                 tvp_template['_tvp',k, 'last_state'] = x
                 tvp_template['_tvp',k, 'last_input'] = u_val
+                tvp_template['_tvp',k, 'drone_acc'] = x_acc
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
@@ -301,10 +306,14 @@ def get_drone_state(data):
     z = data.qpos[2]
     
     current_state = [x, y, z, roll, pitch, yaw]
-    current_state.extend(get_sensor_data(data)[8:])
+    current_state.extend(get_sensor_data(data)[8:14])
     return np.array(current_state)
 
-
+def get_drone_acc(data):
+    drone_acc = [(data.sensordata[14]),(data.sensordata[15]),(data.sensordata[16]),0.0,0.0,0.0]
+    R = data.site_xmat[0].reshape(3,3)
+    drone_acc = drone_acc - vertcat(R@(np.array([0.0,0.0,9.81]).T), 0.0,0.0,0.0) 
+    return np.array(drone_acc)
 def get_sensor_data(data):
     tiltangle1 = data.sensordata[0]
     tiltvel1 = data.sensordata[1]
@@ -319,7 +328,7 @@ def get_sensor_data(data):
     z_vel = data.sensordata[10]
     pitch_vel = data.sensordata[11]
     roll_vel = data.sensordata[12]
-    yaw_vel = data.sensordata[12]
+    yaw_vel = data.sensordata[13]
     
     return [tiltangle1, tiltvel1,
             tiltangle2, tiltvel2,
