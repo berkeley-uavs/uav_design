@@ -44,26 +44,24 @@ x = None
 
 
 def init_controller(model, data):
-    global  mpc_controller, mpc_model,waypoints, curr_waypoint
+    global  mpc_controller, mpc_model,waypoints, curr_waypoint, u_val, point_index
 
+    #states
     pos = mpc_model.set_variable('states',  'pos', (3, 1))
     theta = mpc_model.set_variable('states',  'theta', (3, 1))
-
     dpos = mpc_model.set_variable('states',  'dpos', (3, 1))
     dtheta = mpc_model.set_variable('states',  'dtheta', (3, 1))
 
+    #inputs
     u_th = mpc_model.set_variable('inputs',  'u_th', (4, 1))
     u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
 
-
-    ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
-    ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
+    #time varying paramters
     target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
+    x_ss = mpc_model.set_variable(var_type='_tvp', var_name='x_ss',shape=(12, 1))
+    u_ss = mpc_model.set_variable(var_type='_tvp', var_name='u_ss',shape=(8, 1))
 
-    mpc_model.set_rhs('pos', dpos)
-    mpc_model.set_rhs('theta', dtheta)
-    mpc_model.set_rhs('dpos', ddpos)
-    mpc_model.set_rhs('dtheta', ddtheta)
+    #representing dynamics
 
     T1 = u_th[0]
     T2 = u_th[1]
@@ -88,40 +86,52 @@ def init_controller(model, data):
     dpitch = dtheta[1]
     dyaw = dtheta[2]
 
-    ddx = ddpos[0]
-    ddy = ddpos[1]
-    ddz = ddpos[2]
-    ddroll = ddtheta[0]
-    ddpitch = ddtheta[1]
-    ddyaw = ddtheta[2]
-   
 
-    euler_lagrange = vertcat(
+       
         # 1
-        m*ddx - T2*sin(theta2) + T4*sin(theta4) + m*g*sin(pitch),
+    ddx = (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m
         # 2
-        m*ddy - T1*sin(theta1) + T3*sin(theta3) + m*g*sin(roll),
+    ddy = (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m
         # 3
-        m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) + m*g*cos(roll)*cos(pitch),
+    ddz =  (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m
         # 4
-        Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dy - Izz*dpitch*dy),
+    ddroll =  ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx
         # 5
-        Iyy*ddpitch - T1*cos(theta1)*arm_length + T3*cos(theta3)*arm_length - (-Ixx*droll*dy + Izz*droll*dy),
+    ddpitch  =  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy
         # 6
-        Izz*ddyaw - T1*sin(theta1)*arm_length - T2*sin(theta2)*arm_length - T3*sin(theta3)*arm_length - T4*sin(theta4)*arm_length - (Ixx*droll*dpitch - Iyy*droll*dpitch)
+    ddyaw = (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz
 
+    
+    ddpos = vertcat(
+        ddx,
+        ddy,
+        ddz
     )
+    ddtheta = vertcat(
+        ddroll,
+        ddpitch,
+        ddyaw
+    )
+    
+
+
+    mpc_model.set_rhs('pos', dpos)
+    mpc_model.set_rhs('theta', dtheta)
+    mpc_model.set_rhs('dpos', ddpos)
+    mpc_model.set_rhs('dtheta', ddtheta)
+
     #print(euler_lagrange[2])
 
-    mpc_model.set_alg('euler_lagrange', euler_lagrange)
     mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.000009*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
     mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
 
     mpc_model.setup()
+    mpc_linear_model  = linearize(mpc_model,x_ss, u_ss)
 
 
-    mpc_controller = do_mpc.controller.MPC(mpc_model)
-   
+    #mpc_controller = do_mpc.controller.MPC(mpc_linear_model)
+    mpc_controller = do_mpc.controller.MPC(mpc_linear_model)
+
 
     setup_mpc = {
         'n_horizon': 5,
@@ -143,6 +153,8 @@ def init_controller(model, data):
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = [0.0,0.0,0.0]
+                tvp_template['_tvp',k,'x_ss'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+                tvp_template['_tvp',k,'u_ss'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
@@ -187,10 +199,13 @@ def init_controller(model, data):
     mpc_controller.set_initial_guess()
     
     waypoints = []
-    curr_waypoint = [0.0,0.0,1.0]
-    waypoints.append([.5,.5,1.5])
-    waypoints.append([.3,.3,2.0])
 
+    curr_waypoint = np.array([0.,0.0,.000])
+    u_val = [.0, .0, .0, .0, 0.0, 0.0, 0.0, 0.0]
+    i =0
+    for i in range(200):
+        waypoints.append(i*np.array([0.00,0.0,.005]))
+    
     point_index = 0
 
 
@@ -203,32 +218,37 @@ def norm_vec(x1,x2):
 
 
 def controller(model, data, ):
-    global  mpc_controller, mpc_model, waypoints, curr_waypoint
+    global  mpc_controller, mpc_model, waypoints, curr_waypoint,u_val, point_index
     
     x = get_drone_state(data)
     curr_dist = norm_vec(x[0:3], curr_waypoint)
-    if( curr_dist< .0001):
-        curr_waypoint = waypoints.pop(0)
+
     tvp_template = mpc_controller.get_tvp_template()
     n_horizon = 5
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
                 tvp_template['_tvp',k,'target_point'] = curr_waypoint
+                tvp_template['_tvp',k,'x_ss'] = x
+                tvp_template['_tvp',k,'u_ss'] = u_val
         return tvp_template
     mpc_controller.set_tvp_fun(tvp_fun)
 
+    if(point_index%5 ==0):
+        curr_waypoint = waypoints.pop(0)
+    point_index = point_index + 1
 
-    u = mpc_controller.make_step(x)
+
+    u_val = mpc_controller.make_step(x)
     #apply_control(data, [.01, .01, .01, .01, pi/2, pi/2, pi/2, pi/2])
     # u[4] = 0
     # u[5] = 0
     # u[6] = 0
     # u[7] = 0
     print(x[0:6])
-    print(u)
+    print(u_val)
     print(curr_dist)
     print(curr_waypoint)
-    apply_control(data, u)
+    apply_control(data, u_val)
 
     #print(x[0:6])
 
