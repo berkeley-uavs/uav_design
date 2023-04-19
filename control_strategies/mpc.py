@@ -102,6 +102,13 @@ def init_controller(model, data):
     ddyaw = ddtheta[2]
    
     f = vertcat(
+        dx,
+        dy,
+        dz,
+        droll,
+        dpitch,
+        dyaw,
+
         (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
         # 2
         (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
@@ -144,7 +151,10 @@ def init_controller(model, data):
     )
    
     A = jacobian(f, last_state)
+    print((A.shape))
     B = jacobian(f, last_input)
+    print((B.shape))
+    
     result_vec = vertcat(
         ddx,
         ddy,
@@ -153,7 +163,7 @@ def init_controller(model, data):
         ddpitch,
         ddyaw,
     )
-    euler_lagrange = (result_vec-drone_acc) - A@(state_vec-last_state) - B@(u_vec-last_input)
+    euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u_vec-last_input))[6:]
 
     #print(euler_lagrange)
     
