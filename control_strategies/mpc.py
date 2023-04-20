@@ -269,7 +269,7 @@ def controller(model, data, ):
         curr_waypoint = waypoints.pop(0)
     n_horizon = 7
     x_acc = get_drone_acc(data)
-    print(x_acc)
+    #(x_acc)
     tvp_template = mpc_controller.get_tvp_template()
     def tvp_fun(t_now):
         for k in range(n_horizon+1):
