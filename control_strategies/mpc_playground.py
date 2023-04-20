@@ -3,7 +3,7 @@ import do_mpc
 from casadi import *
 import math
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+import matplotlib as mpl
 
 
 m = .5  # drone_mass
@@ -129,7 +129,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 
 #print(euler_lagrange)
 
-target_point = np.array([[0.0],[0.0],[0.0]])
+target_point = np.array([[0.0],[0.0],[1.0]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.0000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2) ))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
@@ -221,79 +221,88 @@ params_simulator = {
 }
 
 simulator.set_param(**params_simulator)
-tvp_template = simulator.get_tvp_template()
+tvp_template2 = simulator.get_tvp_template()
 n_horizon = 7
 def tvp_fun2(t_now):
-    tvp_template['last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    tvp_template['last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    tvp_template['drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
-    return tvp_template
+    tvp_template2['last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    tvp_template2['last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+    tvp_template2['drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+    return tvp_template2
 simulator.set_tvp_fun(tvp_fun2)
 simulator.setup()
 estimator.x0 = x0
 
-plt.ion()
-rcParams['text.usetex'] = False
-rcParams['axes.grid'] = True
-rcParams['lines.linewidth'] = 2.0
-rcParams['axes.labelsize'] = 'xx-large'
-rcParams['xtick.labelsize'] = 'xx-large'
-rcParams['ytick.labelsize'] = 'xx-large'
-
+mpl.rcParams['font.size'] = 18
+mpl.rcParams['lines.linewidth'] = 3
+mpl.rcParams['axes.grid'] = True
 
 mpc_graphics = do_mpc.graphics.Graphics(mpc_controller.data)
+sim_graphics = do_mpc.graphics.Graphics(simulator.data)
 
-fig = plt.figure(figsize=(16,9))
-
-ax1 = plt.subplot2grid((5, 5), (0, 0), rowspan=4)
-ax2 = plt.subplot2grid((5, 5), (0, 0))
-ax3 = plt.subplot2grid((5, 5), (0, 0))
-ax4 = plt.subplot2grid((5, 5), (0, 0))
-ax5 = plt.subplot2grid((4, 4), (0, 0))
-ax6 = plt.subplot2grid((4, 4), (0, 0))
-ax7 = plt.subplot2grid((4, 4), (0, 0))
-ax8 = plt.subplot2grid((4, 4), (0, 0))
-
-ax2.set_ylabel('x pos]')
-ax3.set_ylabel('y pos')
-ax4.set_ylabel('z pos')
-ax5.set_ylabel('T1')
-ax6.set_ylabel('T2')
-ax7.set_ylabel('T3')
-ax8.set_ylabel('T4')
-
-for ax in [ax2, ax3, ax4, ax5, ax6, ax7, ax8]:
-    ax.yaxis.set_label_position("right")
-    ax.yaxis.tick_right()
-    if ax != ax5:
-        ax.xaxis.set_ticklabels([])
-
-
-ax5.set_xlabel('time [s]')
-
-mpc_graphics.add_line(var_type='_x', var_name='x', axis=ax2)
-mpc_graphics.add_line(var_type='_x', var_name='y', axis=ax3)
-mpc_graphics.add_line(var_type='_x', var_name='z', axis=ax4)
-mpc_graphics.add_line(var_type='_u', var_name='T1', axis=ax5)
-mpc_graphics.add_line(var_type='_u', var_name='T2', axis=ax6)
-mpc_graphics.add_line(var_type='_u', var_name='T3', axis=ax7)
-mpc_graphics.add_line(var_type='_u', var_name='T4', axis=ax8)
-
-
-ax1.axhline(0,color='black')
-
-bar1 = ax1.plot([],[], '-o', linewidth=5, markersize=10)
-bar2 = ax1.plot([],[], '-o', linewidth=5, markersize=10)
-
-ax1.set_xlim(-1.8,1.8)
-ax1.set_ylim(-1.2,1.2)
-ax1.set_axis_off()
-
+fig, ax = plt.subplots(2, sharex=True, figsize=(16,9))
 fig.align_ylabels()
-fig.tight_layout()
 
-u0 = mpc_controller.make_step(x0)
+for g in [sim_graphics, mpc_graphics]:
+    # Plot the positions
+    g.add_line(var_type='_x', var_name='pos', axis=ax[0])
+    #g.add_line(var_type='_x', var_name='theta', axis=ax[0])
+    #g.add_line(var_type='_x', var_name='z', axis=ax[2])
 
+    # Plot the thrusts
+    g.add_line(var_type='_u', var_name='u_th', axis=ax[1])
+    #g.add_line(var_type='_u', var_name='T2', axis=ax[4])
+    #g.add_line(var_type='_u', var_name='T3', axis=ax[5])
+    #g.add_line(var_type='_u', var_name='T4', axis=ax[6])
+
+
+
+ax[0].set_ylabel('pos')
+#ax[1].set_ylabel('theta')
+ax[1].set_ylabel('thrusts')
+ax[1].set_xlabel('time (s)')
+
+
+
+
+
+#u0 = mpc_controller.make_step(x0)
+
+
+
+simulator.reset_history()
+simulator.x0 = x0
+mpc_controller.reset_history()
+
+for i in range(2000):
+    u0 = mpc_controller.make_step(x0)
+    x0 = simulator.make_step(u0)
+    tvp_template = mpc_controller.get_tvp_template()
+    n_horizon = 7
+    def tvp_fun(t_now):
+        for k in range(n_horizon+1):
+            tvp_template['_tvp',k,'last_state'] = x0
+            tvp_template['_tvp',k,'last_input'] = u0
+            tvp_template['_tvp',k,'drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+            return tvp_template
+    mpc_controller.set_tvp_fun(tvp_fun)
+
+    tvp_template2 = simulator.get_tvp_template()
+    def tvp_fun2(t_now):
+        tvp_template2['last_state'] = x0
+        tvp_template2['last_input'] = u0
+        tvp_template2['drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+        return tvp_template2
+  
+    simulator.set_tvp_fun(tvp_fun2)
+    print(u0)
+    print(x0)
+
+mpc_graphics.plot_predictions(t_ind=0)
+# Plot results until current time
+sim_graphics.plot_results()
+sim_graphics.reset_axes()#
+fig
+    
 
 
 
