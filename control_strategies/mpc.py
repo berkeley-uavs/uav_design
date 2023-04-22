@@ -115,9 +115,9 @@ def init_controller(model, data):
         # 3
         (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
         # 4
-        ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy + Izz*dpitch*dy))/Ixx,
+        ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dyaw + Izz*dpitch*dyaw))/Ixx,
         # 5
-        (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+        (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy,
         # 6
         (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz
     )
@@ -131,9 +131,9 @@ def init_controller(model, data):
         # 3
         #m*ddz - T1*cos(theta1) - T2*cos(theta2) - T3*cos(theta3) - T4*cos(theta4) + m*g*cos(roll)*cos(pitch),
         # 4
-        #Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dy - Izz*dpitch*dy),
+        #Ixx*ddroll - (T2*cos(theta2)*arm_length) + (T4*cos(theta4)*arm_length) - (Iyy*dpitch*dyaw - Izz*dpitch*dyaw),
         # 5
-        #Iyy*ddpitch - T1*cos(theta1)*arm_length + T3*cos(theta3)*arm_length - (-Ixx*droll*dy + Izz*droll*dy),
+        #Iyy*ddpitch - T1*cos(theta1)*arm_length + T3*cos(theta3)*arm_length - (-Ixx*droll*dyaw + Izz*droll*dyaw),
         # 6
         #Izz*ddyaw - T1*sin(theta1)*arm_length - T2*sin(theta2)*arm_length - T3*sin(theta3)*arm_length - T4*sin(theta4)*arm_length - (Ixx*droll*dpitch - Iyy*droll*dpitch)
 
@@ -226,17 +226,17 @@ def init_controller(model, data):
     mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
     mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
-    mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
-    mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
+    #mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
+    #mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
 
-    mpc_controller.bounds['lower','_x','theta'] = -x_limits[3:6]
-    mpc_controller.bounds['upper','_x','theta'] = x_limits[3:6]
+    #mpc_controller.bounds['lower','_x','theta'] = -x_limits[3:6]
+    #mpc_controller.bounds['upper','_x','theta'] = x_limits[3:6]
 
-    mpc_controller.bounds['lower','_x','dpos'] = -x_limits[6:9]
+    #mpc_controller.bounds['lower','_x','dpos'] = -x_limits[6:9]
     mpc_controller.bounds['upper','_x','dpos'] = x_limits[6:9]
 
-    mpc_controller.bounds['lower','_x','dtheta'] = -x_limits[9:12]
-    mpc_controller.bounds['upper','_x','dtheta'] = x_limits[9:12]
+    #mpc_controller.bounds['lower','_x','dtheta'] = -x_limits[9:12]
+    #mpc_controller.bounds['upper','_x','dtheta'] = x_limits[9:12]
 
     mpc_controller.setup()
     
