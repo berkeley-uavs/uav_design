@@ -132,7 +132,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 
 target_point = np.array([[0.0],[0.0],[1.5]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.0000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 + (u_ti[0])**2 + (u_ti[1])**2 + (u_ti[2])**2 + (u_ti[3])**2) ))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
 
 mpc_model.setup()
@@ -142,7 +142,7 @@ mpc_controller = do_mpc.controller.MPC(mpc_model)
 
 
 setup_mpc = {
-    'n_horizon': 7,
+    'n_horizon': 32,
     'n_robust': 1,
     'open_loop': 0,
     't_step': 0.001,
@@ -157,7 +157,7 @@ setup_mpc = {
 
 mpc_controller.set_param(**setup_mpc)
 tvp_template = mpc_controller.get_tvp_template()
-n_horizon = 7
+n_horizon = 32
 def tvp_fun(t_now):
     for k in range(n_horizon+1):
         tvp_template['_tvp',k, 'last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
@@ -218,12 +218,12 @@ params_simulator = {
     'integration_tool': 'idas',
     'abstol': 1e-10,
     'reltol': 1e-10,
-    't_step': 0.04
+    't_step': 0.001
 }
 
 simulator.set_param(**params_simulator)
 tvp_template2 = simulator.get_tvp_template()
-n_horizon = 7
+n_horizon = 32
 def tvp_fun2(t_now):
     tvp_template2['last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
     tvp_template2['last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
@@ -274,19 +274,22 @@ simulator.reset_history()
 simulator.x0 = x0
 
 mpc_controller.set_initial_guess()
+dt = .001
 
-
-for i in range(200):
+last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
+for i in range(800):
     u0 = mpc_controller.make_step(x0)
     y_next = simulator.make_step(u0)
     x0 = estimator.make_step(y_next)
     tvp_template_c = mpc_controller.get_tvp_template()
-    n_horizon = 7
+    n_horizon = 32
+    drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
+    #print(drone_acceleration)
     def tvp_fun_c(t_now):
         for k in range(n_horizon+1):
             tvp_template_c['_tvp',k,'last_state'] = x0
             tvp_template_c['_tvp',k,'last_input'] = u0
-            tvp_template_c['_tvp',k,'drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+            tvp_template_c['_tvp',k,'drone_acc'] = drone_acceleration
             return tvp_template_c
     mpc_controller.set_tvp_fun(tvp_fun_c)
 
@@ -294,12 +297,14 @@ for i in range(200):
     def tvp_fun2_c(t_now):
         tvp_template_c2['last_state'] = x0
         tvp_template_c2['last_input'] = u0
-        tvp_template_c2['drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+        tvp_template_c2['drone_acc'] = drone_acceleration
         return tvp_template_c2
   
     simulator.set_tvp_fun(tvp_fun2_c)
     print(u0)
     print(x0)
+    #print("sep")
+    last_x0_dot = np.array(x0[6:])
 
 mpc_graphics.plot_predictions(t_ind=0)
 # Plot results until current time
