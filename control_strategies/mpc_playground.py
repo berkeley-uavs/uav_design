@@ -7,7 +7,6 @@ import matplotlib as mpl
 
 
 m = .5  # drone_mass
-g = 9.81
 arm_length = 1
 Ixx = 1.2
 Iyy = 1.1
@@ -33,7 +32,7 @@ u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
 
 ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
 ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
-last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
+last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(13, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 
@@ -77,6 +76,18 @@ ddroll = ddtheta[0]
 ddpitch = ddtheta[1]
 ddyaw = ddtheta[2]
 
+g = last_state[12]
+
+#second order taylor series approx of sin
+def sinTE(x):
+    return x - ((x)**3)/6
+    #return sin(x)
+def cosTE(x):
+    return 1 -(x**2)/2
+    #return cos(x)
+
+
+
 f = vertcat(
     last_state[6],
     last_state[7],
@@ -85,17 +96,17 @@ f = vertcat(
     last_state[10],
     last_state[11],
 
-    (last_input[1]*sin(last_input[5]) - last_input[3]*sin(last_input[7]) - m*g*sin(last_state[4]))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*last_state[12]*sinTE(last_state[4]))/m,
     # 2
-    (last_input[0]*sin(last_input[4]) - last_input[2]*sin(last_input[6]) - m*g*sin(last_state[3]))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*last_state[12]*sinTE(last_state[3]))/m,
     # 3
-    (last_input[0]*cos(last_input[4]) + last_input[1]*cos(last_input[5]) + last_input[2]*cos(last_input[6]) + last_input[3]*cos(last_input[7]) - m*g*cos(roll)*cos(pitch))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*last_state[12]*cosTE(roll)*cosTE(pitch))/m,
     # 4
-    ((last_input[1]*cos(last_input[5])*arm_length) - (last_input[3]*cos(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
+    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
     # 5
-    (last_input[0]*cos(last_input[4])*arm_length - last_input[2]*cos(last_input[6])*arm_length + (-Ixx*last_state[9]*last_state[11] + Izz*last_state[9]*last_state[11]))/Iyy,
+    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[9]*last_state[11] + Izz*last_state[9]*last_state[11]))/Iyy,
     # 6
-    (last_input[0]*sin(last_input[4])*arm_length + last_input[1]*sin(last_input[5])*arm_length + last_input[2]*sin(last_input[6])*arm_length + last_input[3]*sin(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
+    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
 )
 
 
@@ -112,6 +123,7 @@ state_vec = vertcat(
     theta,
     dpos,
     dtheta,
+    9.81
 )
 
 
@@ -128,9 +140,10 @@ result_vec = vertcat(
 )
 euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u_vec-last_input))[6:]
 
+
 #print(euler_lagrange)
 
-target_point = np.array([[0.0],[0.0],[1.5]])
+target_point = np.array([[0.0],[0.0],[0.15]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
@@ -142,10 +155,10 @@ mpc_controller = do_mpc.controller.MPC(mpc_model)
 
 
 setup_mpc = {
-    'n_horizon': 32,
+    'n_horizon': 30,
     'n_robust': 1,
     'open_loop': 0,
-    't_step': 0.001,
+    't_step': 0.01,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
     'collocation_deg': 3,
@@ -160,9 +173,9 @@ tvp_template = mpc_controller.get_tvp_template()
 n_horizon = 32
 def tvp_fun(t_now):
     for k in range(n_horizon+1):
-        tvp_template['_tvp',k, 'last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-        tvp_template['_tvp',k, 'last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-        tvp_template['_tvp',k, 'drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+        tvp_template['_tvp',k, 'last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
+        tvp_template['_tvp',k, 'last_input'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
+        tvp_template['_tvp',k, 'drone_acc'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
         return tvp_template
 mpc_controller.set_tvp_fun(tvp_fun)
 
@@ -172,8 +185,8 @@ lterm = mpc_model.aux['cost']
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=1e-4)
-mpc_controller.set_rterm(u_ti=1e-3)
+mpc_controller.set_rterm(u_th=1e-5)
+mpc_controller.set_rterm(u_ti=1e-4)
 
 tilt_limit = pi/2
 thrust_limit = 50
@@ -218,16 +231,16 @@ params_simulator = {
     'integration_tool': 'idas',
     'abstol': 1e-10,
     'reltol': 1e-10,
-    't_step': 0.001
+    't_step': 0.01
 }
 
 simulator.set_param(**params_simulator)
 tvp_template2 = simulator.get_tvp_template()
-n_horizon = 32
+n_horizon = 16
 def tvp_fun2(t_now):
-    tvp_template2['last_state'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    tvp_template2['last_input'] = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-    tvp_template2['drone_acc'] = [0.0,0.0,0.0,0.0,0.0,0.0]
+    tvp_template2['last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
+    tvp_template2['last_input'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
+    tvp_template2['drone_acc'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
     return tvp_template2
 simulator.set_tvp_fun(tvp_fun2)
 simulator.setup()
@@ -274,20 +287,19 @@ simulator.reset_history()
 simulator.x0 = x0
 
 mpc_controller.set_initial_guess()
-dt = .001
+dt = .01
 
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 for i in range(800):
     u0 = mpc_controller.make_step(x0)
-    y_next = simulator.make_step(u0)
-    x0 = estimator.make_step(y_next)
+    x0 = simulator.make_step(u0)
     tvp_template_c = mpc_controller.get_tvp_template()
-    n_horizon = 32
+    n_horizon = 30
     drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
     #print(drone_acceleration)
     def tvp_fun_c(t_now):
         for k in range(n_horizon+1):
-            tvp_template_c['_tvp',k,'last_state'] = x0
+            tvp_template_c['_tvp',k,'last_state'] = vertcat(x0,9.81)
             tvp_template_c['_tvp',k,'last_input'] = u0
             tvp_template_c['_tvp',k,'drone_acc'] = drone_acceleration
             return tvp_template_c
@@ -295,14 +307,22 @@ for i in range(800):
 
     tvp_template_c2 = simulator.get_tvp_template()
     def tvp_fun2_c(t_now):
-        tvp_template_c2['last_state'] = x0
+        tvp_template_c2['last_state'] = vertcat(x0,9.81)
         tvp_template_c2['last_input'] = u0
         tvp_template_c2['drone_acc'] = drone_acceleration
         return tvp_template_c2
   
     simulator.set_tvp_fun(tvp_fun2_c)
+    print("u")
     print(u0)
+    print("\n")
+    print("x")
     print(x0)
+    print("\n")
+    print("a")
+    print(drone_acceleration)
+    print("\n")
+
     #print("sep")
     last_x0_dot = np.array(x0[6:])
 
