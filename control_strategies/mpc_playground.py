@@ -100,7 +100,7 @@ f = vertcat(
     # 2
     (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*last_state[12]*sinTE(last_state[3]))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*last_state[12]*cosTE(roll)*cosTE(pitch))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*last_state[12]*cosTE(last_state[3])*cosTE(last_state[4]))/m,
     # 4
     ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
     # 5
@@ -170,7 +170,7 @@ setup_mpc = {
 
 mpc_controller.set_param(**setup_mpc)
 tvp_template = mpc_controller.get_tvp_template()
-n_horizon = 32
+n_horizon = 30
 def tvp_fun(t_now):
     for k in range(n_horizon+1):
         tvp_template['_tvp',k, 'last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
@@ -236,7 +236,6 @@ params_simulator = {
 
 simulator.set_param(**params_simulator)
 tvp_template2 = simulator.get_tvp_template()
-n_horizon = 16
 def tvp_fun2(t_now):
     tvp_template2['last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
     tvp_template2['last_input'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
