@@ -39,8 +39,6 @@ drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(
 
 
 
-
-
 mpc_model.set_rhs('pos', dpos)
 mpc_model.set_rhs('theta', dtheta)
 mpc_model.set_rhs('dpos', ddpos)
@@ -112,8 +110,6 @@ f = vertcat(
 
 
 
-
-
 u_vec = vertcat(
     u_th,
     u_ti
@@ -125,7 +121,6 @@ state_vec = vertcat(
     dtheta,
     9.81
 )
-
 
 
 
@@ -169,15 +164,9 @@ setup_mpc = {
 }
 
 mpc_controller.set_param(**setup_mpc)
-tvp_template = mpc_controller.get_tvp_template()
+
 n_horizon = 30
-def tvp_fun(t_now):
-    for k in range(n_horizon+1):
-        tvp_template['_tvp',k, 'last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
-        tvp_template['_tvp',k, 'last_input'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
-        tvp_template['_tvp',k, 'drone_acc'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
-        return tvp_template
-mpc_controller.set_tvp_fun(tvp_fun)
+
 
 
 mterm = mpc_model.aux['mterm']
@@ -215,13 +204,34 @@ mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 #mpc_controller.bounds['upper','_x','dtheta'] = x_limits[9:12]
 
 
-mpc_controller.setup()
+
+class TVPData:
+    def __init__(self, x, u, drone_accel):
+        self.x = x0
+        self.u = u0
+        self.drone_accel = drone_accel
+    
+
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
+u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+init_acceleration = 0
+
+tvp = TVPData(x0, u0, init_acceleration)
 
 
 
-u_val = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+# Setting TVPs
+controller_tvp_template = mpc_controller.get_tvp_template()
+def controller_tvp_fun(t_now):
+    for k in range(n_horizon+1):
+        controller_tvp_template['_tvp',k,'last_state'] = vertcat(tvp.x, 9.81)
+        controller_tvp_template['_tvp',k,'last_input'] = tvp.u
+        controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
+        return controller_tvp_template
+mpc_controller.set_tvp_fun(controller_tvp_fun)
+mpc_controller.setup()
+
 
 estimator = do_mpc.estimator.StateFeedback(mpc_model)
 simulator = do_mpc.simulator.Simulator(mpc_model)
@@ -235,14 +245,17 @@ params_simulator = {
 }
 
 simulator.set_param(**params_simulator)
-tvp_template2 = simulator.get_tvp_template()
-def tvp_fun2(t_now):
-    tvp_template2['last_state'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[9.81]]
-    tvp_template2['last_input'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
-    tvp_template2['drone_acc'] = [[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]
-    return tvp_template2
-simulator.set_tvp_fun(tvp_fun2)
+
+simulator_tvp_template = simulator.get_tvp_template()
+def simulator_tvp_fun(t_now):
+    simulator_tvp_template['last_state'] = vertcat(tvp.x,9.81)
+    simulator_tvp_template['last_input'] = tvp.u
+    simulator_tvp_template['drone_acc'] = tvp.drone_accel
+    return simulator_tvp_template
+simulator.set_tvp_fun(simulator_tvp_fun)
 simulator.setup()
+
+
 estimator.x0 = x0
 
 mpl.rcParams['font.size'] = 18
@@ -275,12 +288,7 @@ ax[1].set_ylabel('thrusts')
 ax[1].set_xlabel('time (s)')
 
 
-
-
-
 #u0 = mpc_controller.make_step(x0)
-
-
 
 simulator.reset_history()
 simulator.x0 = x0
@@ -292,26 +300,17 @@ last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 for i in range(800):
     u0 = mpc_controller.make_step(x0)
     x0 = simulator.make_step(u0)
-    tvp_template_c = mpc_controller.get_tvp_template()
+    
+    # tvp_template_c = mpc_controller.get_tvp_template()
+    # print(tvp_template_c)
     n_horizon = 30
-    drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
-    #print(drone_acceleration)
-    def tvp_fun_c(t_now):
-        for k in range(n_horizon+1):
-            tvp_template_c['_tvp',k,'last_state'] = vertcat(x0,9.81)
-            tvp_template_c['_tvp',k,'last_input'] = u0
-            tvp_template_c['_tvp',k,'drone_acc'] = drone_acceleration
-            return tvp_template_c
-    mpc_controller.set_tvp_fun(tvp_fun_c)
 
-    tvp_template_c2 = simulator.get_tvp_template()
-    def tvp_fun2_c(t_now):
-        tvp_template_c2['last_state'] = vertcat(x0,9.81)
-        tvp_template_c2['last_input'] = u0
-        tvp_template_c2['drone_acc'] = drone_acceleration
-        return tvp_template_c2
-  
-    simulator.set_tvp_fun(tvp_fun2_c)
+
+    drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
+    tvp.x = x0
+    tvp.u = u0
+    tvp.drone_accel = drone_acceleration
+
     print("u")
     print(u0)
     print("\n")
