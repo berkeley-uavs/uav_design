@@ -33,7 +33,7 @@ u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
 
 ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
 ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
-last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(13, 1))
+last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 
@@ -75,7 +75,7 @@ ddroll = ddtheta[0]
 ddpitch = ddtheta[1]
 ddyaw = ddtheta[2]
 
-g = last_state[12]
+g = 9.81
 
 #second order taylor series approx of sin
 def sinTE(x):
@@ -95,11 +95,11 @@ f = vertcat(
     last_state[10],
     last_state[11],
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*last_state[12]*sinTE(last_state[4]))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(last_state[4]))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*last_state[12]*sinTE(last_state[3]))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(last_state[3]))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*last_state[12]*cosTE(last_state[3])*cosTE(last_state[4]))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(last_state[3])*cosTE(last_state[4]))/m,
     # 4
     ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
     # 5
@@ -120,7 +120,6 @@ state_vec = vertcat(
     theta,
     dpos,
     dtheta,
-    9.81
 )
 
 
@@ -139,7 +138,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 
 #print(euler_lagrange)
 
-target_point = np.array([[0.0],[0.0],[0.15]])
+target_point = np.array([[0.0],[0.0],[0.11]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
@@ -149,10 +148,10 @@ mpc_model.setup()
 mpc_controller = do_mpc.controller.MPC(mpc_model)
 
 setup_mpc = {
-    'n_horizon': 15,
+    'n_horizon': 20,
     'n_robust': 1,
     'open_loop': 0,
-    't_step': 0.04,
+    't_step': 0.01,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
     'collocation_deg': 3,
@@ -164,7 +163,7 @@ setup_mpc = {
 
 mpc_controller.set_param(**setup_mpc)
 
-n_horizon = 30
+n_horizon = 20
 
 mterm = mpc_model.aux['mterm']
 lterm = mpc_model.aux['cost']
@@ -212,7 +211,7 @@ class TVPData:
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
 u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-init_acceleration = 0
+init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
 
 tvp = TVPData(x0, u0, init_acceleration)
 
@@ -220,7 +219,7 @@ tvp = TVPData(x0, u0, init_acceleration)
 controller_tvp_template = mpc_controller.get_tvp_template()
 def controller_tvp_fun(t_now):
     for k in range(n_horizon+1):
-        controller_tvp_template['_tvp',k,'last_state'] = vertcat(tvp.x, 9.81)
+        controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
         return controller_tvp_template
@@ -236,14 +235,14 @@ params_simulator = {
     'integration_tool': 'idas',
     'abstol': 1e-10,
     'reltol': 1e-10,
-    't_step': 0.04
+    't_step': 0.01
 }
 
 simulator.set_param(**params_simulator)
 
 simulator_tvp_template = simulator.get_tvp_template()
 def simulator_tvp_fun(t_now):
-    simulator_tvp_template['last_state'] = vertcat(tvp.x,9.81)
+    simulator_tvp_template['last_state'] = tvp.x
     simulator_tvp_template['last_input'] = tvp.u
     simulator_tvp_template['drone_acc'] = tvp.drone_accel
     return simulator_tvp_template
@@ -264,25 +263,7 @@ mpl.rcParams['axes.grid'] = True
 # sim_graphics = do_mpc.graphics.Graphics(simulator.data)
 
 # fig, ax = plt.subplots(2, sharex=True, figsize=(16,9))
-# fig.align_ylabels()
 
-# for g in [sim_graphics, mpc_graphics]:
-#     # Plot the positions
-#     g.add_line(var_type='_x', var_name='pos', axis=ax[0])
-#     #g.add_line(var_type='_x', var_name='theta', axis=ax[0])
-#     #g.add_line(var_type='_x', var_name='z', axis=ax[2])
-
-#     # Plot the thrusts
-#     g.add_line(var_type='_u', var_name='u_th', axis=ax[1])
-#     #g.add_line(var_type='_u', var_name='T2', axis=ax[4])
-#     #g.add_line(var_type='_u', var_name='T3', axis=ax[5])
-#     #g.add_line(var_type='_u', var_name='T4', axis=ax[6])
-
-
-# ax[0].set_ylabel('pos')
-# #ax[1].set_ylabel('theta')
-# ax[1].set_ylabel('thrusts')
-# ax[1].set_xlabel('time (s)')
 
 
 
@@ -292,10 +273,10 @@ simulator.reset_history()
 simulator.x0 = x0
 
 mpc_controller.set_initial_guess()
-dt = .04
+dt = .01
 
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-for i in range(10):
+for i in range(40):
     start = time.time()
     u0 = mpc_controller.make_step(x0)
     end = time.time()
@@ -307,17 +288,18 @@ for i in range(10):
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
 
-    print("u")
-    print(u0)
-    print("\n")
-    print("x")
-    print(x0)
-    print("\n")
-    print("a")
-    print(drone_acceleration)
-    print("\n")
+    #print("u")
+    #print(u0)
+    #print("\n")
+    #print("x")
+    #print(x0)
+    #print("\n")
+    #print("a")
+    #print(drone_acceleration)
+    #print("\n")
 
     #print("sep")
+    print(i)
     last_x0_dot = np.array(x0[6:])
 
 fig, ax = plt.subplots()
