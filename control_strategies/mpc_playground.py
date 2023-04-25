@@ -4,6 +4,7 @@ from casadi import *
 import math
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import time
 
 
 m = .5  # drone_mass
@@ -145,15 +146,13 @@ mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_poi
 
 mpc_model.setup()
 
-
 mpc_controller = do_mpc.controller.MPC(mpc_model)
 
-
 setup_mpc = {
-    'n_horizon': 30,
+    'n_horizon': 15,
     'n_robust': 1,
     'open_loop': 0,
-    't_step': 0.01,
+    't_step': 0.04,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
     'collocation_deg': 3,
@@ -166,8 +165,6 @@ setup_mpc = {
 mpc_controller.set_param(**setup_mpc)
 
 n_horizon = 30
-
-
 
 mterm = mpc_model.aux['mterm']
 lterm = mpc_model.aux['cost']
@@ -220,8 +217,6 @@ init_acceleration = 0
 tvp = TVPData(x0, u0, init_acceleration)
 
 
-
-# Setting TVPs
 controller_tvp_template = mpc_controller.get_tvp_template()
 def controller_tvp_fun(t_now):
     for k in range(n_horizon+1):
@@ -241,7 +236,7 @@ params_simulator = {
     'integration_tool': 'idas',
     'abstol': 1e-10,
     'reltol': 1e-10,
-    't_step': 0.01
+    't_step': 0.04
 }
 
 simulator.set_param(**params_simulator)
@@ -255,37 +250,40 @@ def simulator_tvp_fun(t_now):
 simulator.set_tvp_fun(simulator_tvp_fun)
 simulator.setup()
 
-
 estimator.x0 = x0
+
+
+
+# Plotting
 
 mpl.rcParams['font.size'] = 18
 mpl.rcParams['lines.linewidth'] = 3
 mpl.rcParams['axes.grid'] = True
 
-mpc_graphics = do_mpc.graphics.Graphics(mpc_controller.data)
-sim_graphics = do_mpc.graphics.Graphics(simulator.data)
+# mpc_graphics = do_mpc.graphics.Graphics(mpc_controller.data)
+# sim_graphics = do_mpc.graphics.Graphics(simulator.data)
 
-fig, ax = plt.subplots(2, sharex=True, figsize=(16,9))
-fig.align_ylabels()
+# fig, ax = plt.subplots(2, sharex=True, figsize=(16,9))
+# fig.align_ylabels()
 
-for g in [sim_graphics, mpc_graphics]:
-    # Plot the positions
-    g.add_line(var_type='_x', var_name='pos', axis=ax[0])
-    #g.add_line(var_type='_x', var_name='theta', axis=ax[0])
-    #g.add_line(var_type='_x', var_name='z', axis=ax[2])
+# for g in [sim_graphics, mpc_graphics]:
+#     # Plot the positions
+#     g.add_line(var_type='_x', var_name='pos', axis=ax[0])
+#     #g.add_line(var_type='_x', var_name='theta', axis=ax[0])
+#     #g.add_line(var_type='_x', var_name='z', axis=ax[2])
 
-    # Plot the thrusts
-    g.add_line(var_type='_u', var_name='u_th', axis=ax[1])
-    #g.add_line(var_type='_u', var_name='T2', axis=ax[4])
-    #g.add_line(var_type='_u', var_name='T3', axis=ax[5])
-    #g.add_line(var_type='_u', var_name='T4', axis=ax[6])
+#     # Plot the thrusts
+#     g.add_line(var_type='_u', var_name='u_th', axis=ax[1])
+#     #g.add_line(var_type='_u', var_name='T2', axis=ax[4])
+#     #g.add_line(var_type='_u', var_name='T3', axis=ax[5])
+#     #g.add_line(var_type='_u', var_name='T4', axis=ax[6])
 
 
+# ax[0].set_ylabel('pos')
+# #ax[1].set_ylabel('theta')
+# ax[1].set_ylabel('thrusts')
+# ax[1].set_xlabel('time (s)')
 
-ax[0].set_ylabel('pos')
-#ax[1].set_ylabel('theta')
-ax[1].set_ylabel('thrusts')
-ax[1].set_xlabel('time (s)')
 
 
 #u0 = mpc_controller.make_step(x0)
@@ -294,17 +292,15 @@ simulator.reset_history()
 simulator.x0 = x0
 
 mpc_controller.set_initial_guess()
-dt = .01
+dt = .04
 
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-for i in range(800):
+for i in range(10):
+    start = time.time()
     u0 = mpc_controller.make_step(x0)
+    end = time.time()
+    print("Computation time: ", end-start)
     x0 = simulator.make_step(u0)
-    
-    # tvp_template_c = mpc_controller.get_tvp_template()
-    # print(tvp_template_c)
-    n_horizon = 30
-
 
     drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
     tvp.x = x0
@@ -324,11 +320,19 @@ for i in range(800):
     #print("sep")
     last_x0_dot = np.array(x0[6:])
 
-mpc_graphics.plot_predictions(t_ind=0)
-# Plot results until current time
-sim_graphics.plot_results()
-sim_graphics.reset_axes()#
-fig
+fig, ax = plt.subplots()
+
+t = mpc_controller.data['_time']
+z_height = mpc_controller.data['_x'][:, 2]
+
+# Plot the data
+ax.plot(t, z_height, label='z')
+
+# Add a legend to the plot
+ax.legend()
+
+# Display the plot
+plt.show()
     
 
 
