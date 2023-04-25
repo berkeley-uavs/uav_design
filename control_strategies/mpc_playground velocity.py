@@ -21,8 +21,7 @@ estimator = None
 u = None
 x = None
 
-pos = mpc_model.set_variable('states',  'pos', (3, 1))
-theta = mpc_model.set_variable('states',  'theta', (3, 1))
+
 
 dpos = mpc_model.set_variable('states',  'dpos', (3, 1))
 dtheta = mpc_model.set_variable('states',  'dtheta', (3, 1))
@@ -33,15 +32,14 @@ u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
 
 ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
 ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
-last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
+last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(6, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 
 
 
 
-mpc_model.set_rhs('pos', dpos)
-mpc_model.set_rhs('theta', dtheta)
+
 mpc_model.set_rhs('dpos', ddpos)
 mpc_model.set_rhs('dtheta', ddtheta)
 
@@ -61,12 +59,12 @@ roll = last_state[3]
 pitch = last_state[4]
 yaw = last_state[5]
 
-dx = last_state[6]
-dy = last_state[7]
-dz = last_state[8]
-droll = last_state[9]
-dpitch = last_state[10]
-dyaw = last_state[11]
+dx = last_state[0]
+dy = last_state[1]
+dz = last_state[2]
+droll = last_state[3]
+dpitch = last_state[4]
+dyaw = last_state[5]
 
 ddx = ddpos[0]
 ddy = ddpos[1]
@@ -86,26 +84,20 @@ def cosTE(x):
     #return cos(x)
 
 
-
+#would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
-    last_state[6],
-    last_state[7],
-    last_state[8],
-    last_state[9],
-    last_state[10],
-    last_state[11],
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(last_state[4]))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(0))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(last_state[3]))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(0))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(last_state[3])*cosTE(last_state[4]))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[0]) + last_input[3]*cosTE(last_input[1]) - m*g*cosTE(0)*cosTE(0))/m,
     # 4
-    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
+    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[4]*last_state[5] + Izz*last_state[4]*last_state[5]))/Ixx,
     # 5
-    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[9]*last_state[11] + Izz*last_state[9]*last_state[11]))/Iyy,
+    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[3]*last_state[5] + Izz*last_state[3]*last_state[5]))/Iyy,
     # 6
-    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
+    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[3]*last_state[4] - Iyy*last_state[3]*last_state[4]))/Izz
 )
 
 
@@ -116,8 +108,6 @@ u_vec = vertcat(
     u_ti
 )
 state_vec = vertcat(
-    pos,
-    theta,
     dpos,
     dtheta,
 )
@@ -133,15 +123,15 @@ result_vec = vertcat(
     ddpos,
     ddtheta
 )
-euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u_vec-last_input))[6:]
+euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
 
 
 #print(euler_lagrange)
 
-target_point = np.array([[0.0],[0.0],[0.11]])
+target_point = np.array([[0.0],[0.0],[3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
+mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
 
 mpc_model.setup()
 
@@ -208,7 +198,7 @@ class TVPData:
         self.drone_accel = drone_accel
     
 
-x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,.0,0.0,0.0,0.0,0.0,0.0])
+x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
 u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
@@ -283,7 +273,7 @@ for i in range(40):
     print("Computation time: ", end-start)
     x0 = simulator.make_step(u0)
 
-    drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
+    drone_acceleration = (np.array(x0) - last_x0_dot )/dt
     tvp.x = x0
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
@@ -300,7 +290,7 @@ for i in range(40):
 
     #print("sep")
     print(i)
-    last_x0_dot = np.array(x0[6:])
+    last_x0_dot = np.array(x0)
 
 fig, ax = plt.subplots()
 
