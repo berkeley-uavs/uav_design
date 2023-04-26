@@ -45,35 +45,35 @@ mpc_model.set_rhs('theta', dtheta)
 mpc_model.set_rhs('dpos', ddpos)
 mpc_model.set_rhs('dtheta', ddtheta)
 
-T1 = last_input[0]
-T2 = last_input[1]
-T3 = last_input[2]
-T4 = last_input[3]
-theta1 = last_input[4]
-theta2 = last_input[5]
-theta3 = last_input[6]
-theta4 = last_input[7]
+#T1 = last_input[0]
+#T2 = last_input[1]
+#T3 = last_input[2]
+#T4 = last_input[3]
+#theta1 = last_input[4]
+#theta2 = last_input[5]
+#theta3 = last_input[6]
+#theta4 = last_input[7]
 
-x = last_state[0]
-y = last_state[1]
-z = last_state[2]
-roll = last_state[3]
-pitch = last_state[4]
-yaw = last_state[5]
+#x = last_state[0]
+#y = last_state[1]
+#z = last_state[2]
+#roll = last_state[3]
+#pitch = last_state[4]
+#yaw = last_state[5]
 
-dx = last_state[6]
-dy = last_state[7]
-dz = last_state[8]
-droll = last_state[9]
-dpitch = last_state[10]
-dyaw = last_state[11]
+#dx = last_state[6]
+#dy = last_state[7]
+#dz = last_state[8]
+#droll = last_state[9]
+#dpitch = last_state[10]
+#dyaw = last_state[11]
 
-ddx = ddpos[0]
-ddy = ddpos[1]
-ddz = ddpos[2]
-ddroll = ddtheta[0]
-ddpitch = ddtheta[1]
-ddyaw = ddtheta[2]
+#ddx = ddpos[0]
+#ddy = ddpos[1]
+#ddz = ddpos[2]
+#ddroll = ddtheta[0]
+#ddpitch = ddtheta[1]
+#ddyaw = ddtheta[2]
 
 g = 9.81
 
@@ -138,7 +138,10 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 
 #print(euler_lagrange)
 
-target_point = np.array([[0.0],[0.0],[0.11]])
+#simulator nonlinear model 
+
+
+target_point = np.array([[0.0],[0.0],[0.08]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
@@ -228,7 +231,88 @@ mpc_controller.setup()
 
 
 estimator = do_mpc.estimator.StateFeedback(mpc_model)
-simulator = do_mpc.simulator.Simulator(mpc_model)
+
+##setting up nonlinear simulator (clean up later)
+mpc_modelsim = do_mpc.model.Model("continuous")
+
+
+pos_s = mpc_modelsim.set_variable('states',  'pos_s', (3, 1))
+theta_s = mpc_modelsim.set_variable('states',  'theta_s', (3, 1))
+dpos_s = mpc_modelsim.set_variable('states',  'dpos_s', (3, 1))
+dtheta_s = mpc_modelsim.set_variable('states',  'dtheta_s', (3, 1))
+ddpos_s = mpc_modelsim.set_variable('algebraic',  'ddpos_s', (3, 1))
+ddtheta_s = mpc_modelsim.set_variable('algebraic',  'ddtheta_s', (3, 1))
+
+#inputs
+u_th_s = mpc_modelsim.set_variable('inputs',  'u_th_s', (4, 1))
+u_ti_s = mpc_modelsim.set_variable('inputs',  'u_ti_s', (4, 1))
+
+#time varying paramters
+
+
+#representing dynamics
+
+T1 = u_th_s[0]
+T2 = u_th_s[1]
+T3 = u_th_s[2]
+T4 = u_th_s[3]
+theta1 = u_ti_s[0]
+theta2 = u_ti_s[1]
+theta3 = u_ti_s[2]
+theta4 = u_ti_s[3]
+
+x = pos_s[0]
+y = pos_s[1]
+z = pos_s[2]
+roll = theta_s[0]
+pitch = theta_s[1]
+yaw = theta_s[2]
+
+dx = dpos_s[0]
+dy = dpos_s[1]
+dz = dpos_s[2]
+droll = dtheta_s[0]
+dpitch = dtheta_s[1]
+dyaw = dtheta_s[2]
+
+ddx = ddpos_s[0]
+ddy = ddpos_s[1]
+ddz = ddpos_s[2]
+ddroll = ddtheta_s[0]
+ddpitch = ddtheta_s[1]
+ddyaw = ddtheta_s[2]
+
+
+euler_lagrange_sim= vertcat(
+    
+    # 1
+ddx - (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
+    # 2
+ddy - (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
+    # 3
+ddz -  (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
+    # 4
+ddroll -  ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+    # 5
+ddpitch  -  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+    # 6
+ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
+)
+
+
+
+
+
+
+mpc_modelsim.set_rhs('pos_s', dpos_s)
+mpc_modelsim.set_rhs('theta_s', dtheta_s)
+mpc_modelsim.set_rhs('dpos_s', ddpos_s)
+mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
+
+mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_sim)
+mpc_modelsim.setup()
+
+simulator = do_mpc.simulator.Simulator(mpc_modelsim)
 
 params_simulator = {
     # Note: cvode doesn't support DAE systems.
@@ -240,13 +324,7 @@ params_simulator = {
 
 simulator.set_param(**params_simulator)
 
-simulator_tvp_template = simulator.get_tvp_template()
-def simulator_tvp_fun(t_now):
-    simulator_tvp_template['last_state'] = tvp.x
-    simulator_tvp_template['last_input'] = tvp.u
-    simulator_tvp_template['drone_acc'] = tvp.drone_accel
-    return simulator_tvp_template
-simulator.set_tvp_fun(simulator_tvp_fun)
+
 simulator.setup()
 
 estimator.x0 = x0
@@ -316,6 +394,9 @@ ax.legend()
 # Display the plot
 plt.show()
     
+
+
+
 
 
 
