@@ -179,7 +179,7 @@ def init_controller(model, data):
    
 
     setup_mpc = {
-        'n_horizon': 7,
+        'n_horizon': 20,
         'n_robust': 1,
         'open_loop': 0,
         't_step': 0.001,

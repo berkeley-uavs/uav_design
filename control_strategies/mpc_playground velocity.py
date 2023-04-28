@@ -35,6 +35,8 @@ ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
 last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(6, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
+roll_and_pitch = mpc_model.set_variable(var_type='_tvp', var_name='roll_and_pitch',shape=(2, 1))
+target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
 
 
 
@@ -87,9 +89,9 @@ def cosTE(x):
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(0))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(roll_and_pitch[1]))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(0))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(roll_and_pitch[0]))/m,
     # 3
     (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[0]) + last_input[3]*cosTE(last_input[1]) - m*g*cosTE(0)*cosTE(0))/m,
     # 4
@@ -128,7 +130,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[2.0],[0.0],[3]])
+#target_point = np.array([[2.0],[0.0],[3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -192,18 +194,21 @@ mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
 
 class TVPData:
-    def __init__(self, x, u, drone_accel):
+    def __init__(self, x, u, drone_accel, roll_and_pitch, target_point):
         self.x = x0
         self.u = u0
         self.drone_accel = drone_accel
+        self.roll_and_pitch = roll_and_pitch
+        self.target_point = target_point
     
 
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
 u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
-
-tvp = TVPData(x0, u0, init_acceleration)
+roll_and_pitch0 = np.array([[0.0],[0.0]])
+target_point0 = np.array([[2.0],[0.0], [3.0]])
+tvp = TVPData(x0, u0, init_acceleration, roll_and_pitch0, target_point0)
 
 
 controller_tvp_template = mpc_controller.get_tvp_template()
@@ -212,6 +217,10 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
+        controller_tvp_template['_tvp',k,'roll_and_pitch'] = tvp.roll_and_pitch
+        controller_tvp_template['_tvp',k,'target_point'] = tvp.target_point
+
+
         return controller_tvp_template
 mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
@@ -235,6 +244,11 @@ def simulator_tvp_fun(t_now):
     simulator_tvp_template['last_state'] = tvp.x
     simulator_tvp_template['last_input'] = tvp.u
     simulator_tvp_template['drone_acc'] = tvp.drone_accel
+    simulator_tvp_template['roll_and_pitch'] = tvp.roll_and_pitch
+    simulator_tvp_template['target_point'] = tvp.target_point
+
+    
+
     return simulator_tvp_template
 simulator.set_tvp_fun(simulator_tvp_fun)
 simulator.setup()
@@ -262,9 +276,13 @@ mpl.rcParams['axes.grid'] = True
 simulator.reset_history()
 simulator.x0 = x0
 
+
+
+
 mpc_controller.set_initial_guess()
 dt = .01
-
+curr_roll = 0.0
+curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 for i in range(40):
     start = time.time()
@@ -277,6 +295,13 @@ for i in range(40):
     tvp.x = x0
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
+    #tvp.target_point = np.array([[cos(i*pi/180)*1.],[sin(i*pi/180)*1.],[3.]])
+    #tvp.target_point = np.array([[2.0],[0.0], [3.0]])
+    curr_roll = curr_roll + float(x0[3]*dt)
+    curr_pitch = curr_pitch + float(x0[4]*dt)
+    rparray = np.array([curr_roll, curr_pitch])
+    #print(rparray)
+    tvp.roll_and_pitch = rparray
 
     #print("u")
     #print(u0)
