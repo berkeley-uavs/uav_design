@@ -37,7 +37,7 @@ last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 roll_and_pitch = mpc_model.set_variable(var_type='_tvp', var_name='roll_and_pitch',shape=(2, 1))
 target_point = mpc_model.set_variable(var_type='_tvp', var_name='target_point',shape=(3, 1))
-
+#hardcode in targetpoint later for now
 
 
 
@@ -130,7 +130,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-#target_point = np.array([[2.0],[0.0],[3]])
+target_point = np.array([[2.0],[0.0],[3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
