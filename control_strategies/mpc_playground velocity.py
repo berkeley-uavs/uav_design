@@ -330,8 +330,3 @@ ax.legend()
 
 # Display the plot
 plt.show()
-    
-
-
-
-
