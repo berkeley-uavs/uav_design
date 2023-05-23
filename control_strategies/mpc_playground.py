@@ -141,7 +141,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 #simulator nonlinear model 
 
 
-target_point = np.array([[.0],[0.0],[.08]])
+target_point = np.array([[0.],[0.0],[.08]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
