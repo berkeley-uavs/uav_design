@@ -348,14 +348,12 @@ last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
 reached_target = False
 step_counter = 0
+convergence_counter = 0
 
-while not reached_target:
+while convergence_counter < 10 or (not reached_target):
     start = time.time()
-    print("before make step ", horzcat(*[mpc_controller.opt_x_num['_x',step_counter,0,-1]]+mpc_controller.opt_x_num['_x',step_counter+1,0,:-1]))
     u0 = mpc_controller.make_step(x0)
     x0sim = simulator.make_step(u0)
-
-    print("after make step ", horzcat(*[mpc_controller.opt_x_num['_x',step_counter,0,-1]]+mpc_controller.opt_x_num['_x',step_counter+1,0,:-1]))
     x0 = x0sim[6:]
     drone_acceleration = (np.array(x0) - last_x0_dot )/dt
     tvp.x = x0
@@ -386,11 +384,15 @@ while not reached_target:
 
     #print("sep")
     step_counter += 1
-    print(step_counter)
+    if convergence_counter > 0:
+        convergence_counter += 1
     last_x0_dot = np.array(x0)
 
-    if mpc_controller.data['_x'][-1, 0] >= target_point[0, 0] - 0.01 and mpc_controller.data['_x'][-1, 0] <= target_point[0, 0] + 0.01:
+    if mpc_controller.data['_x'][-1, 0] >= target_point[0, 0] - 0.1 and mpc_controller.data['_x'][-1, 0] <= target_point[0, 0] + 0.1:
+        convergence_counter += 1
         reached_target = True
+
+    print(step_counter)
 
 fig, ax = plt.subplots()
 
