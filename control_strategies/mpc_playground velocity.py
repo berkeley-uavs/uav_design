@@ -224,7 +224,7 @@ estimator.x0 = x0
 
 ##setting up nonlinear simulator 
 
-mpc_modelsim = do_mpc.model.Model("continuous")
+mpc_modelsim = do_mpc.model.Model(model_type)
 
 
 pos_s = mpc_modelsim.set_variable('states',  'pos_s', (3, 1))
@@ -237,9 +237,6 @@ ddtheta_s = mpc_modelsim.set_variable('algebraic',  'ddtheta_s', (3, 1))
 #inputs
 u_th_s = mpc_modelsim.set_variable('inputs',  'u_th_s', (4, 1))
 u_ti_s = mpc_modelsim.set_variable('inputs',  'u_ti_s', (4, 1))
-
-#time varying paramters
-
 
 #representing dynamics
 
@@ -348,12 +345,17 @@ dt = .01
 curr_roll = 0.0
 curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-for i in range(40):
+
+reached_target = False
+step_counter = 0
+
+while not reached_target:
     start = time.time()
+    print("before make step ", horzcat(*[mpc_controller.opt_x_num['_x',step_counter,0,-1]]+mpc_controller.opt_x_num['_x',step_counter+1,0,:-1]))
     u0 = mpc_controller.make_step(x0)
-    end = time.time()
-    print("Computation time: ", end-start)
     x0sim = simulator.make_step(u0)
+
+    print("after make step ", horzcat(*[mpc_controller.opt_x_num['_x',step_counter,0,-1]]+mpc_controller.opt_x_num['_x',step_counter+1,0,:-1]))
     x0 = x0sim[6:]
     drone_acceleration = (np.array(x0) - last_x0_dot )/dt
     tvp.x = x0
@@ -366,8 +368,11 @@ for i in range(40):
     curr_roll = x0sim[3]
     curr_pitch = x0sim[4]
     rparray = np.array([curr_roll, curr_pitch])
-    #print(rparray)
     tvp.roll_and_pitch = rparray
+
+    end = time.time()
+    computation_time = end-start
+    print("Computation time: ", computation_time)
 
     #print("u")
     #print(u0)
@@ -380,8 +385,12 @@ for i in range(40):
     #print("\n")
 
     #print("sep")
-    print(i)
+    step_counter += 1
+    print(step_counter)
     last_x0_dot = np.array(x0)
+
+    if mpc_controller.data['_x'][-1, 0] >= target_point[0, 0] - 0.01 and mpc_controller.data['_x'][-1, 0] <= target_point[0, 0] + 0.01:
+        reached_target = True
 
 fig, ax = plt.subplots()
 
