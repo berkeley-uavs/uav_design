@@ -169,8 +169,8 @@ x_limits = np.array([inf, inf, inf, pi/6, pi/6, pi/6, .1, .1, .1, 1, 1, 1])
 
 mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
-#mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
-#mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
+mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
+mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
 #mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
 #mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
@@ -369,8 +369,8 @@ for i in range(40):
     #print(rparray)
     tvp.roll_and_pitch = rparray
 
-    print("u")
-    print(u0)
+    #print("u")
+    #print(u0)
     #print("\n")
     #print("x")
     #print(x0sim)
@@ -386,10 +386,10 @@ for i in range(40):
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-x_pos = mpc_controller.data['_x'][:, 0]
+x_vel = mpc_controller.data['_x'][:, 2]
 
 # Plot the data
-ax.plot(t, x_pos, label='x')
+ax.plot(t, x_vel, label='z')
 
 # Add a legend to the plot
 ax.legend()
