@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
 
-
 m = .5  # drone_mass
 arm_length = 1
 Ixx = 1.2
@@ -123,7 +122,32 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[.5],[0.0],[1.1]])
+def calculate_circle_waypoints():
+
+    # circular trajectory parameters
+    radius = 1.0
+    circumference = 2*3.14*1
+    time_step = 0.01
+    total_time = 100
+    num_waypoints = int(total_time / time_step)
+    angle_increment = 2 * 3.14 / num_waypoints
+
+
+    start_point = [[0.0], [0.0], [0.0]]
+    waypoints = np.array([start_point])
+
+    for step in range(num_waypoints):
+        angle = step * angle_increment
+        x = np.array([start_point[0][0] + radius * np.cos(angle)])
+        y = np.array([start_point[1][0] + radius * np.sin(angle)])
+        z = np.array([start_point[2][0]])
+        # print(np.array([x, y, z]))
+        waypoints = np.append(waypoints, np.array([[x, y, z]]), axis=0)
+
+    return waypoints
+
+waypoints = calculate_circle_waypoints()
+target_point = waypoints[0] # np.array([[.5],[0.0],[1.1]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -372,17 +396,6 @@ while convergence_counter < 10 or (not reached_target):
     computation_time = end-start
     print("Computation time: ", computation_time)
 
-    #print("u")
-    #print(u0)
-    #print("\n")
-    #print("x")
-    #print(x0sim)
-    #print("\n")
-    #print("a")
-    #print(drone_acceleration)
-    #print("\n")
-
-    #print("sep")
     step_counter += 1
     if convergence_counter > 0:
         convergence_counter += 1
