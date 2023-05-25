@@ -123,7 +123,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[.5],[0.0],[1.1]])
+target_point = np.array([[.5],[0.0],[0]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -169,8 +169,8 @@ x_limits = np.array([inf, inf, inf, pi/6, pi/6, pi/6, .1, .1, .1, 1, 1, 1])
 
 mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
-mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
-mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
+#mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
+#mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
 #mpc_controller.bounds['lower','_x','pos'] = -x_limits[0:3]
 #mpc_controller.bounds['upper','_x','pos'] = x_limits[0:3]
@@ -369,8 +369,8 @@ for i in range(40):
     #print(rparray)
     tvp.roll_and_pitch = rparray
 
-    #print("u")
-    #print(u0)
+    print("u")
+    print(u0)
     #print("\n")
     #print("x")
     #print(x0sim)
