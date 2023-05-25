@@ -410,10 +410,10 @@ while convergence_counter < 10 or (not reached_target):
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-x_pos = mpc_controller.data['_x'][:, 0]
+x_vel = mpc_controller.data['_x'][:, 2]
 
 # Plot the data
-ax.plot(t, x_pos, label='x')
+ax.plot(t, x_vel, label='z')
 
 # Add a legend to the plot
 ax.legend()
