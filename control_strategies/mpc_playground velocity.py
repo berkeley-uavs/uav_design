@@ -22,6 +22,17 @@ u = None
 x = None
 
 
+def rotBE(r,p,y):
+    rotBEm = np.array([[[math.cos(y)*math.cos(p)], [math.sin(y)*math.cos(p)], [-math.sin(p)]], 
+                    [[math.cos(y)*math.sin(p) * math.sin(r) - math.sin(y)*math.cos(r)], [math.sin(y)*math.sin(p) * math.sin(r) + math.cos(y)*math.cos(r)], [math.cos(p)*math.sin(r)]],
+                    [[math.cos(y)*math.sin(p) * math.cos(r) + math.sin(y)*math.sin(r)], [math.sin(y)*math.sin(p) * math.cos(r) - math.cos(y)*math.sin(r)], [math.cos(p)*math.cos(r)]]])
+    return rotBEm
+    
+
+def rotEB(rotBEm):
+    return np.transpose(rotBEm)
+
+#print(rotEB(rotBE(0,0,math.pi)))
 
 dpos = mpc_model.set_variable('states',  'dpos', (3, 1))
 dtheta = mpc_model.set_variable('states',  'dtheta', (3, 1))
@@ -35,7 +46,7 @@ ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
 last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(6, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
-roll_and_pitch = mpc_model.set_variable(var_type='_tvp', var_name='roll_and_pitch',shape=(2, 1))
+roll_and_pitch_and_yaw = mpc_model.set_variable(var_type='_tvp', var_name='roll_and_pitch_and_yaw',shape=(3, 1))
 #hardcode in targetpoint later for now
 
 
@@ -82,11 +93,11 @@ def cosTE(x):
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(roll_and_pitch[1]))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(roll_and_pitch_and_yaw[1]))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(roll_and_pitch[0]))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(roll_and_pitch_and_yaw[0]))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(0)*cosTE(0))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(roll_and_pitch_and_yaw[0])*cosTE(roll_and_pitch_and_yaw[1]))/m,
     # 4
     ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[4]*last_state[5] + Izz*last_state[4]*last_state[5]))/Ixx,
     # 5
@@ -187,11 +198,11 @@ mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
 
 class TVPData:
-    def __init__(self, x, u, drone_accel, roll_and_pitch):
+    def __init__(self, x, u, drone_accel, roll_and_pitch_and_yaw):
         self.x = x0
         self.u = u0
         self.drone_accel = drone_accel
-        self.roll_and_pitch = roll_and_pitch
+        self.roll_and_pitch_and_yaw = roll_and_pitch_and_yaw
        
     
 
@@ -199,9 +210,9 @@ x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
 u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
-roll_and_pitch0 = np.array([[0.0],[0.0]])
+roll_and_pitch_andyaw0 = np.array([[0.0],[0.0], [0.0]])
 #target_point0 = np.array([[2.0],[0.0], [3.0]])
-tvp = TVPData(x0, u0, init_acceleration, roll_and_pitch0)
+tvp = TVPData(x0, u0, init_acceleration, roll_and_pitch_andyaw0)
 
 
 controller_tvp_template = mpc_controller.get_tvp_template()
@@ -210,7 +221,7 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
-        controller_tvp_template['_tvp',k,'roll_and_pitch'] = tvp.roll_and_pitch
+        controller_tvp_template['_tvp',k,'roll_and_pitch_and_yaw'] = tvp.roll_and_pitch_and_yaw
 
 
         return controller_tvp_template
@@ -294,7 +305,6 @@ ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*
 
 
 
-
 mpc_modelsim.set_rhs('pos_s', dpos_s)
 mpc_modelsim.set_rhs('theta_s', dtheta_s)
 mpc_modelsim.set_rhs('dpos_s', ddpos_s)
@@ -365,9 +375,10 @@ for i in range(40):
     #curr_pitch = curr_pitch + float(x0[4]*dt)
     curr_roll = x0sim[3]
     curr_pitch = x0sim[4]
-    rparray = np.array([curr_roll, curr_pitch])
+    curr_yaw = x0sim[5]
+    rparray = np.array([curr_roll, curr_pitch,curr_yaw])
     #print(rparray)
-    tvp.roll_and_pitch = rparray
+    tvp.roll_and_pitch_and_yaw = rparray
 
     #print("u")
     #print(u0)
@@ -386,10 +397,10 @@ for i in range(40):
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-x_vel = mpc_controller.data['_x'][:, 2]
+x_vel = mpc_controller.data['_x'][:, 0]
 
 # Plot the data
-ax.plot(t, x_vel, label='z')
+ax.plot(t, x_vel, label='x')
 
 # Add a legend to the plot
 ax.legend()
