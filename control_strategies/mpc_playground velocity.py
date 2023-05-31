@@ -23,14 +23,17 @@ x = None
 
 
 def rotBE(r,p,y):
-    rotBEm = np.array([[[math.cos(y)*math.cos(p)], [math.sin(y)*math.cos(p)], [-math.sin(p)]], 
-                    [[math.cos(y)*math.sin(p) * math.sin(r) - math.sin(y)*math.cos(r)], [math.sin(y)*math.sin(p) * math.sin(r) + math.cos(y)*math.cos(r)], [math.cos(p)*math.sin(r)]],
-                    [[math.cos(y)*math.sin(p) * math.cos(r) + math.sin(y)*math.sin(r)], [math.sin(y)*math.sin(p) * math.cos(r) - math.cos(y)*math.sin(r)], [math.cos(p)*math.cos(r)]]])
+    rotBEm = [[(cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p))], 
+                    [(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r))],
+                    [(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r))]]
     return rotBEm
     
 
-def rotEB(rotBEm):
-    return np.transpose(rotBEm)
+def rotEB(r,p,y):
+    rotEBm= [[(cos(y)*cos(p)), (sin(y)*cos(p)),(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)),(cos(y)*sin(p) * cos(r) + sin(y)*sin(r))],
+    [(sin(y)*cos(p)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(sin(y)*sin(p) * cos(r) - cos(y)*sin(r))],
+    [(-sin(p)),(cos(p)*sin(r)),(cos(p)*cos(r))]]
+    return rotEBm
 
 #print(rotEB(rotBE(0,0,math.pi)))
 
@@ -107,7 +110,7 @@ f = vertcat(
 )
 
 
-
+fspatial = rotEB(roll_and_pitch_and_yaw[0],roll_and_pitch_and_yaw[1],roll_and_pitch_and_yaw[2]) * f
 
 u_vec = vertcat(
     u_th,
@@ -120,9 +123,9 @@ state_vec = vertcat(
 
 
 
-A = jacobian(f, last_state)
+A = jacobian(fspatial, last_state)
 print((A.shape))
-B = jacobian(f, last_input)
+B = jacobian(fspatial, last_input)
 print((B.shape))
 
 result_vec = vertcat(
@@ -301,7 +304,7 @@ ddpitch  -  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll
 ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
-
+euler_lagrange_simspatial = rotEB(roll,pitch,yaw)*euler_lagrange_sim
 
 
 
@@ -310,7 +313,7 @@ mpc_modelsim.set_rhs('theta_s', dtheta_s)
 mpc_modelsim.set_rhs('dpos_s', ddpos_s)
 mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
 
-mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_sim)
+mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_simspatial)
 mpc_modelsim.setup()
 
 simulator = do_mpc.simulator.Simulator(mpc_modelsim)
