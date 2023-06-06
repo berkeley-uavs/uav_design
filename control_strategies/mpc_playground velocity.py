@@ -23,16 +23,30 @@ x = None
 
 
 def rotBE(r,p,y):
-    rotBEm = [[(cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p))], 
-                    [(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r))],
-                    [(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r))]]
+
+    
+    rotBErow1 = horzcat((cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p)),0,0,0)
+    rotBErow2 = horzcat((cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r)),0,0,0)
+    rotBErow3 = horzcat((cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r)),0,0,0)
+    rotBErow4 = horzcat(0,0,0,1,0,0)
+    rotBErow5 = horzcat(0,0,0,0,1,0)
+    rotBErow6 = horzcat(0,0,0,0,0,1)
+
+    rotBEm = vertcat(rotBErow1, rotBErow2,rotBErow3,rotBErow4,rotBErow5,rotBErow6)
+
+
+    #rotBEm = [[(cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p)),0,0,0], 
+                    #[(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r)),0,0,0],
+                    #[(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r)),0,0,0]]
     return rotBEm
     
 
 def rotEB(r,p,y):
-    rotEBm= [[(cos(y)*cos(p)), (sin(y)*cos(p)),(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)),(cos(y)*sin(p) * cos(r) + sin(y)*sin(r))],
-    [(sin(y)*cos(p)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(sin(y)*sin(p) * cos(r) - cos(y)*sin(r))],
-    [(-sin(p)),(cos(p)*sin(r)),(cos(p)*cos(r))]]
+
+    rotEBm = transpose(rotBE(r,p,y))
+    #rotEBm= [[(cos(y)*cos(p)), (sin(y)*cos(p)),(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)),(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)),1,0,0],
+    #[(sin(y)*cos(p)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(sin(y)*sin(p) * cos(r) - cos(y)*sin(r)),0,1,0],
+    #[(-sin(p)),(cos(p)*sin(r)),(cos(p)*cos(r)),0,0,1]]
     return rotEBm
 
 #print(rotEB(rotBE(0,0,math.pi)))
@@ -110,8 +124,9 @@ f = vertcat(
 )
 
 
-fspatial = rotEB(roll_and_pitch_and_yaw[0],roll_and_pitch_and_yaw[1],roll_and_pitch_and_yaw[2]) * f
-
+rotEBMatrix = rotEB(roll_and_pitch_and_yaw[0],roll_and_pitch_and_yaw[1],roll_and_pitch_and_yaw[2])
+fspatial =  rotEBMatrix @ f
+print(fspatial.shape)
 u_vec = vertcat(
     u_th,
     u_ti
@@ -304,7 +319,7 @@ ddpitch  -  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll
 ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
-euler_lagrange_simspatial = rotEB(roll,pitch,yaw)*euler_lagrange_sim
+euler_lagrange_simspatial = rotEB(roll,pitch,yaw) @ euler_lagrange_sim
 
 
 
