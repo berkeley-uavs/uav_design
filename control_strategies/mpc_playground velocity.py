@@ -130,8 +130,8 @@ zero_row = horzcat(0,0,0,0,0,0)
 #print(skew(w_t)[0,:].shape)
 #print(horzcat(skew(w_t)[0,:] ,0,0,0).shape)
 print(rotEBMatrix[0:3, 0:3])
-fspatial = vertcat(((rotEBMatrix[0:3, 0:3] + skew(w_t) + skew(w_t)@skew(w_t))@f[0:3]), f[3],f[4], f[5])
 #fspatial  = f
+fspatial = vertcat(((rotEBMatrix[0:3, 0:3])@f[0:3] + 2* (skew(w_t)@v_t)), f[3], f[4], f[5])
 print(fspatial.shape)
 u_vec = vertcat(
     u_th,
@@ -158,7 +158,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[.0],[0.0],[0.5]])
+target_point = np.array([[.5],[0.0],[0.0]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -328,9 +328,12 @@ ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*
 w_tsim = vertcat(dtheta_s[0]
 ,dtheta_s[1]
 ,dtheta_s[2])
+v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
-euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
+#euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
+euler_lagrange_simspatial = vertcat(((rotEBMatrixsim[0:3, 0:3])@euler_lagrange_sim[0:3] + 2* (skew(w_tsim)@v_tsim)), euler_lagrange_sim[3], euler_lagrange_sim[4], euler_lagrange_sim[5])
+
 
 
 
