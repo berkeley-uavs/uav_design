@@ -7,8 +7,8 @@ import matplotlib as mpl
 import time
 
 
-m = .5  # drone_mass
-arm_length = 1
+m = 1.8  # drone_mass
+arm_length = .2286
 Ixx = 1.2
 Iyy = 1.1
 Izz = 1.0
@@ -158,7 +158,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[.5],[0.0],[0.0]])
+target_point = np.array([[0.],[0.0],[0.001]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -190,10 +190,10 @@ lterm = mpc_model.aux['cost']
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=1e-5)
-mpc_controller.set_rterm(u_ti=1e-4)
+mpc_controller.set_rterm(u_th=1e-7)
+mpc_controller.set_rterm(u_ti=1e-6)
 
-tilt_limit = pi/2
+tilt_limit = pi/(2.2)
 thrust_limit = 50
 u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
 u_lower_limits =  np.array([0.0, 0.0, 0.0, 0.0])
@@ -309,20 +309,20 @@ ddpitch = ddtheta_s[1]
 ddyaw = ddtheta_s[2]
 
 
-euler_lagrange_sim= vertcat(
+f_sim= vertcat(
     
     # 1
-ddx - (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
+(T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
     # 2
-ddy - (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
+(T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
     # 3
-ddz -  (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
+(T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
     # 4
-ddroll -  ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
     # 5
-ddpitch  -  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+(T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
     # 6
-ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
+(T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
 w_tsim = vertcat(dtheta_s[0]
@@ -332,10 +332,10 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-euler_lagrange_simspatial = vertcat(((rotEBMatrixsim[0:3, 0:3])@euler_lagrange_sim[0:3] + 2* (skew(w_tsim)@v_tsim)), euler_lagrange_sim[3], euler_lagrange_sim[4], euler_lagrange_sim[5])
+f_simspatial = vertcat(((rotEBMatrixsim[0:3, 0:3])@f_sim[0:3] + 2* (skew(w_tsim)@v_tsim)), f_sim[3:6])
 
 
-
+euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
 
 mpc_modelsim.set_rhs('pos_s', dpos_s)
 mpc_modelsim.set_rhs('theta_s', dtheta_s)
@@ -390,7 +390,7 @@ dt = .01
 curr_roll = 0.0
 curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-for i in range(40):
+for i in range(20):
     start = time.time()
     u0 = mpc_controller.make_step(x0)
     end = time.time()

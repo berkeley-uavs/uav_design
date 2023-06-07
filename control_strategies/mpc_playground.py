@@ -22,7 +22,32 @@ u = None
 x = None
 
 
+def rotBE(r,p,y):
 
+    
+    rotBErow1 = horzcat((cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p)),0,0,0)
+    rotBErow2 = horzcat((cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r)),0,0,0)
+    rotBErow3 = horzcat((cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r)),0,0,0)
+    rotBErow4 = horzcat(0,0,0,1,0,0)
+    rotBErow5 = horzcat(0,0,0,0,1,0)
+    rotBErow6 = horzcat(0,0,0,0,0,1)
+
+    rotBEm = vertcat(rotBErow1, rotBErow2,rotBErow3,rotBErow4,rotBErow5,rotBErow6)
+
+
+    #rotBEm = [[(cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p)),0,0,0], 
+                    #[(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r)),0,0,0],
+                    #[(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r)),0,0,0]]
+    return rotBEm
+    
+
+def rotEB(r,p,y):
+
+    rotEBm = transpose(rotBE(r,p,y))
+    #rotEBm= [[(cos(y)*cos(p)), (sin(y)*cos(p)),(cos(y)*sin(p) *sin(r) - sin(y)*cos(r)),(cos(y)*sin(p) * cos(r) + sin(y)*sin(r)),1,0,0],
+    #[(sin(y)*cos(p)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(sin(y)*sin(p) * cos(r) - cos(y)*sin(r)),0,1,0],
+    #[(-sin(p)),(cos(p)*sin(r)),(cos(p)*cos(r)),0,0,1]]
+    return rotEBm
 
 pos = mpc_model.set_variable('states',  'pos', (3, 1))
 theta = mpc_model.set_variable('states',  'theta', (3, 1))
@@ -111,8 +136,13 @@ f = vertcat(
     (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
 )
 
+spatial_velocities = rotEB(last_state[3], last_state[4], last_state[5])@f[0:6]
+w_t = vertcat(last_state[9], last_state[10], last_state[11])
+v_t = vertcat(last_state[6], last_state[7],last_state[8])
 
+spatial_accelerations = vertcat((rotEB(last_state[3], last_state[4], last_state[5])[0:3,0:3]@f[6:9] + (2* skew(w_t)@v_t)), f[9:12])
 
+f_spatial = vertcat(spatial_velocities, spatial_accelerations)
 
 u_vec = vertcat(
     u_th,
@@ -127,9 +157,9 @@ state_vec = vertcat(
 
 
 
-A = jacobian(f, last_state)
+A = jacobian(f_spatial, last_state)
 print((A.shape))
-B = jacobian(f, last_input)
+B = jacobian(f_spatial, last_input)
 print((B.shape))
 
 result_vec = vertcat(
@@ -144,10 +174,10 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 #simulator nonlinear model 
 
 
-target_point = np.array([[0.],[0.0],[.08]])
+target_point = np.array([[0.0],[0.0],[.00001]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
+mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
 
 mpc_model.setup()
 
@@ -255,55 +285,61 @@ u_ti_s = mpc_modelsim.set_variable('inputs',  'u_ti_s', (4, 1))
 
 #representing dynamics
 
-T1 = u_th_s[0]
-T2 = u_th_s[1]
-T3 = u_th_s[2]
-T4 = u_th_s[3]
-theta1 = u_ti_s[0]
-theta2 = u_ti_s[1]
-theta3 = u_ti_s[2]
-theta4 = u_ti_s[3]
+T1s = u_th_s[0]
+T2s = u_th_s[1]
+T3s = u_th_s[2]
+T4s = u_th_s[3]
+theta1s = u_ti_s[0]
+theta2s = u_ti_s[1]
+theta3s = u_ti_s[2]
+theta4s = u_ti_s[3]
 
-x = pos_s[0]
-y = pos_s[1]
-z = pos_s[2]
-roll = theta_s[0]
-pitch = theta_s[1]
-yaw = theta_s[2]
+xs = pos_s[0]
+ys = pos_s[1]
+zs = pos_s[2]
+rolls = theta_s[0]
+pitchs = theta_s[1]
+yaws = theta_s[2]
 
-dx = dpos_s[0]
-dy = dpos_s[1]
-dz = dpos_s[2]
-droll = dtheta_s[0]
-dpitch = dtheta_s[1]
-dyaw = dtheta_s[2]
+dxs = dpos_s[0]
+dys = dpos_s[1]
+dzs = dpos_s[2]
+drolls = dtheta_s[0]
+dpitchs = dtheta_s[1]
+dyaws = dtheta_s[2]
 
-ddx = ddpos_s[0]
-ddy = ddpos_s[1]
-ddz = ddpos_s[2]
-ddroll = ddtheta_s[0]
-ddpitch = ddtheta_s[1]
-ddyaw = ddtheta_s[2]
+ddxs = ddpos_s[0]
+ddys = ddpos_s[1]
+ddzs = ddpos_s[2]
+ddrolls = ddtheta_s[0]
+ddpitchs = ddtheta_s[1]
+ddyaws = ddtheta_s[2]
 
 
-euler_lagrange_sim= vertcat(
+f_sim= vertcat(
     
     # 1
-ddx - (T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
+(T2s*sin(theta2s) - T4s*sin(theta4s) - m*g*sin(pitchs))/m,
     # 2
-ddy - (T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
+(T1s*sin(theta1s) - T3s*sin(theta3s) - m*g*sin(rolls))/m,
     # 3
-ddz -  (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
+(T1s*cos(theta1s) + T2s*cos(theta2s) + T3s*cos(theta3s) + T4s*cos(theta4s) - m*g*cos(rolls)*cos(pitchs))/m,
     # 4
-ddroll -  ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+((T2s*cos(theta2s)*arm_length) - (T4s*cos(theta4s)*arm_length) + (Iyy*dpitchs*dys - Izz*dpitchs*dys))/Ixx,
     # 5
-ddpitch  -  (T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+(T1s*cos(theta1s)*arm_length - T3s*cos(theta3s)*arm_length + (-Ixx*drolls*dys + Izz*drolls*dys))/Iyy,
     # 6
-ddyaw - (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
+(T1s*sin(theta1s)*arm_length + T2s*sin(theta2s)*arm_length + T3s*sin(theta3s)*arm_length + T4s*sin(theta4s)*arm_length + (Ixx*drolls*dpitchs - Iyy*drolls*dpitchs))/Izz,
 )
 
 
+w_t_s = vertcat(drolls, dpitchs, dyaws)
+v_t_s = vertcat(dxs, dys,dzs)
 
+spatial_accelerations_s = vertcat((rotEB(rolls, pitchs, yaws)[0:3,0:3]@f_sim[0:3] + (2* skew(w_t_s)@v_t_s)), f_sim[3:6])
+
+
+euler_spatial_sim = vertcat(ddpos_s, ddtheta_s) - spatial_accelerations_s
 
 
 
@@ -312,7 +348,7 @@ mpc_modelsim.set_rhs('theta_s', dtheta_s)
 mpc_modelsim.set_rhs('dpos_s', ddpos_s)
 mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
 
-mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_sim)
+mpc_modelsim.set_alg('euler_lagrange_sim', euler_spatial_sim)
 mpc_modelsim.setup()
 
 simulator = do_mpc.simulator.Simulator(mpc_modelsim)
@@ -375,8 +411,8 @@ for i in range(40):
     #print("x")
     #print(x0)
     #print("\n")
-    #print("a")
-    #print(drone_acceleration)
+    print("a")
+    print(drone_acceleration)
     #print("\n")
 
     #print("sep")
@@ -386,10 +422,25 @@ for i in range(40):
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-z_height = mpc_controller.data['_x'][:, 2]
+x_vel = mpc_controller.data['_x'][:, 6]
+y_vel = mpc_controller.data['_x'][:, 7]
+z_vel = mpc_controller.data['_x'][:, 8]
+
+roll_graph = mpc_controller.data['_x'][:, 9]
+pitch_graph = mpc_controller.data['_x'][:,10]
+yaw_graph = mpc_controller.data['_x'][:, 11]
+
 
 # Plot the data
-ax.plot(t, z_height, label='z')
+ax.plot(t, x_vel, label='xv')
+ax.plot(t, y_vel, label='yv')
+ax.plot(t, z_vel, label='zv')
+ax.plot(t, roll_graph, label='rv')
+ax.plot(t, pitch_graph, label='pv')
+ax.plot(t, yaw_graph, label='yawv')
+
+
+
 
 # Add a legend to the plot
 ax.legend()
