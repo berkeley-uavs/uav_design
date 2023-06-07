@@ -123,9 +123,16 @@ f = vertcat(
     (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[3]*last_state[4] - Iyy*last_state[3]*last_state[4]))/Izz
 )
 
-
+w_t = vertcat(last_state[3], last_state[4], last_state[5])
+v_t = vertcat(last_state[0], last_state[1], last_state[2])
 rotEBMatrix = rotEB(roll_and_pitch_and_yaw[0],roll_and_pitch_and_yaw[1],roll_and_pitch_and_yaw[2])
-fspatial =  rotEBMatrix @ f
+#fspatial =  rotBEMatrix @ f + vertcat((2* skew(w_t))@v_t, 0, 0, 0)
+zero_row = horzcat(0,0,0,0,0,0)
+#print(skew(w_t)[0,:].shape)
+#print(horzcat(skew(w_t)[0,:] ,0,0,0).shape)
+skew6x6 = vertcat(horzcat(skew(w_t)[0,:] ,0,0,0), horzcat(skew(w_t)[1,:] ,0,0,0), horzcat(skew(w_t)[2,:] ,0,0,0), zero_row, zero_row, zero_row)
+print(skew6x6.shape)
+fspatial = (rotEBMatrix + skew6x6 + skew6x6@skew6x6)@f
 print(fspatial.shape)
 u_vec = vertcat(
     u_th,
@@ -152,7 +159,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[.5],[0.0],[0]])
+target_point = np.array([[.5],[0.3],[0.0]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
@@ -160,9 +167,10 @@ mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_po
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
+n_horizon = 20
 
 setup_mpc = {
-    'n_horizon': 20,
+    'n_horizon': n_horizon,
     'n_robust': 1,
     'open_loop': 0,
     't_step': 0.01,
@@ -177,7 +185,6 @@ setup_mpc = {
 
 mpc_controller.set_param(**setup_mpc)
 
-n_horizon = 20
 
 mterm = mpc_model.aux['mterm']
 lterm = mpc_model.aux['cost']
@@ -398,8 +405,8 @@ for i in range(40):
     #print(rparray)
     tvp.roll_and_pitch_and_yaw = rparray
 
-    #print("u")
-    #print(u0)
+    print("u")
+    print(u0)
     #print("\n")
     #print("x")
     #print(x0sim)
@@ -416,9 +423,24 @@ fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
 x_vel = mpc_controller.data['_x'][:, 0]
+y_vel = mpc_controller.data['_x'][:, 1]
+z_vel = mpc_controller.data['_x'][:, 2]
+
+roll_graph = mpc_controller.data['_x'][:, 3]
+pitch_graph = mpc_controller.data['_x'][:, 4]
+yaw_graph = mpc_controller.data['_x'][:, 5]
+
 
 # Plot the data
 ax.plot(t, x_vel, label='x')
+ax.plot(t, y_vel, label='y')
+ax.plot(t, z_vel, label='z')
+ax.plot(t, roll_graph, label='r')
+ax.plot(t, pitch_graph, label='p')
+ax.plot(t, yaw_graph, label='yaw')
+
+
+
 
 # Add a legend to the plot
 ax.legend()
