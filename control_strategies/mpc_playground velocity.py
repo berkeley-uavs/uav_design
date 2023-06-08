@@ -158,10 +158,10 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_point = np.array([[0.],[0.0],[0.001]])
+target_velocity = np.array([[0.5],[0.0],[0.0001]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
+mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
 
 mpc_model.setup()
 
@@ -172,6 +172,7 @@ setup_mpc = {
     'n_horizon': n_horizon,
     'n_robust': 1,
     'open_loop': 0,
+    't_step': 0.01,
     't_step': 0.01,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
@@ -197,6 +198,7 @@ tilt_limit = pi/(2.2)
 thrust_limit = 50
 u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
 u_lower_limits =  np.array([0.0, 0.0, 0.0, 0.0])
+u_tilt_bounds = np.array([0.0, 0.0, 0.0, 0.0])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
