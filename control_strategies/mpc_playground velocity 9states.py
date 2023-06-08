@@ -163,7 +163,7 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[.0],[0.0],[.0000]])
+target_velocity = np.array([[.0],[0.0],[.1]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
@@ -416,8 +416,8 @@ for i in range(20):
     #curr_pitch = curr_pitch + float(x0[4]*dt)
     
 
-    print("u")
-    print(u0)
+    #print("u")
+    #print(u0)
     #print("\n")
     #print("x")
     #print(x0sim)
@@ -425,6 +425,8 @@ for i in range(20):
     #print("a")
     #print(drone_acceleration)
     #print("\n")
+
+   # print(x0[2])
 
     #print("sep")
     print(i)
@@ -437,15 +439,15 @@ x_vel = mpc_controller.data['_x'][:, 0]
 y_vel = mpc_controller.data['_x'][:, 1]
 z_vel = mpc_controller.data['_x'][:, 2]
 
-roll_graph = mpc_controller.data['_x'][:, 3]
-pitch_graph = mpc_controller.data['_x'][:, 4]
-yaw_graph = mpc_controller.data['_x'][:, 5]
+roll_graph = mpc_controller.data['_x'][:, 6]
+pitch_graph = mpc_controller.data['_x'][:,7]
+yaw_graph = mpc_controller.data['_x'][:, 8]
 
 
 # Plot the data
-ax.plot(t, x_vel, label='x')
-ax.plot(t, y_vel, label='y')
-ax.plot(t, z_vel, label='z')
+ax.plot(t, x_vel, label='xv')
+ax.plot(t, y_vel, label='yv')
+ax.plot(t, z_vel, label='zv')
 ax.plot(t, roll_graph, label='r')
 ax.plot(t, pitch_graph, label='p')
 ax.plot(t, yaw_graph, label='yaw')
