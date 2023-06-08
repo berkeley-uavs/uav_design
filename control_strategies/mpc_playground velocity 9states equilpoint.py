@@ -164,7 +164,7 @@ euler_lagrange = (result_vec) - (A@(state_vec)) - (B@(u_vec-last_input))
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[5.0],[0.0],[2.001]])
+target_velocity = np.array([[.0],[0.0],[.001]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
