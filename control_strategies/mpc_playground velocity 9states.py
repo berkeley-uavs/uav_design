@@ -116,11 +116,11 @@ def cosTE(x):
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(pitch))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(roll))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(roll)*cosTE(pitch))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]))/m,
     # 4
     ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[4]*last_state[5] + Izz*last_state[4]*last_state[5]))/Ixx,
     # 5
@@ -135,7 +135,7 @@ zero_row = horzcat(0,0,0,0,0,0)
 #print(skew(w_t)[0,:].shape)
 #print(horzcat(skew(w_t)[0,:] ,0,0,0).shape)
 #fspatial  = f
-fspatial = rotEBMatrix@f
+fspatial = rotEBMatrix@(f) 
 print(fspatial.shape)
 u_vec = vertcat(
     u_th,
@@ -158,12 +158,12 @@ result_vec = vertcat(
     ddpos,
     ddtheta
 )
-euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
+euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input)) + vertcat(0.0,0.0,g,0.0,0.0,0.0)
 
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[0.0],[0.0],[.001]])
+target_velocity = np.array([[.0],[0.0],[.0000]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
@@ -202,14 +202,14 @@ mpc_controller.set_rterm(u_ti=1e-6)
 tilt_limit = pi/(2.2)
 thrust_limit = 50
 u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
-u_lower_limits =  np.array([0.0, 0.0, 0.0, 0.0])
+u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
 #u_tilt_bounds = np.array([0.0, 0.0, 0.0, 0.0])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
 x_limits = np.array([inf, inf, inf, pi/6, pi/6, pi/6, .1, .1, .1, 1, 1, 1])
 
-mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
+mpc_controller.bounds['lower','_u','u_th'] = -u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
 mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
 mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
@@ -239,10 +239,10 @@ class TVPData:
 
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
-u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
-#u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+#u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
+u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 
-init_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
+init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
 #init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
 
 #target_point0 = np.array([[2.0],[0.0], [3.0]])
@@ -321,11 +321,11 @@ ddyaw = ddtheta_s[2]
 f_sim= vertcat(
     
     # 1
-(T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
+(T2*sin(theta2) - T4*sin(theta4))/m,
     # 2
-(T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
+(T1*sin(theta1) - T3*sin(theta3))/m,
     # 3
-(T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
+(T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4))/m,
     # 4
 ((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
     # 5
@@ -341,7 +341,7 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-f_simspatial = rotEBMatrixsim@f_sim
+f_simspatial = rotEBMatrixsim@f_sim - vertcat(0.0,0.0,g,0.0,0.0,0.0)
 
 
 euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
