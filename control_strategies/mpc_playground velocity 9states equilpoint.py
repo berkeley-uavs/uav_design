@@ -7,8 +7,8 @@ import matplotlib as mpl
 import time
 
 
-m = .5  # drone_mass
-arm_length = 1
+m = 1.8  # drone_mass
+arm_length = .2286
 Ixx = 1.2
 Iyy = 1.1
 Izz = 1.0
@@ -49,11 +49,10 @@ def rotEB(r,p,y):
     #[(-sin(p)),(cos(p)*sin(r)),(cos(p)*cos(r)),0,0,1]]
     return rotEBm
 
-pos = mpc_model.set_variable('states',  'pos', (3, 1))
-theta = mpc_model.set_variable('states',  'theta', (3, 1))
-
+#print(rotEB(rotBE(0,0,math.pi)))
 dpos = mpc_model.set_variable('states',  'dpos', (3, 1))
 dtheta = mpc_model.set_variable('states',  'dtheta', (3, 1))
+theta = mpc_model.set_variable('states',  'theta', (3, 1))
 
 u_th = mpc_model.set_variable('inputs',  'u_th', (4, 1))
 u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
@@ -61,47 +60,47 @@ u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
 
 ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
 ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
-last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
+last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(9, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
+#hardcode in targetpoint later for now
 
 
 
 
-mpc_model.set_rhs('pos', dpos)
-mpc_model.set_rhs('theta', dtheta)
 mpc_model.set_rhs('dpos', ddpos)
+mpc_model.set_rhs('theta', dtheta)
 mpc_model.set_rhs('dtheta', ddtheta)
 
-#T1 = last_input[0]
-#T2 = last_input[1]
-#T3 = last_input[2]
-#T4 = last_input[3]
-#theta1 = last_input[4]
-#theta2 = last_input[5]
-#theta3 = last_input[6]
-#theta4 = last_input[7]
+T1 = last_input[0]
+T2 = last_input[1]
+T3 = last_input[2]
+T4 = last_input[3]
+theta1 = last_input[4]
+theta2 = last_input[5]
+theta3 = last_input[6]
+theta4 = last_input[7]
 
-#x = last_state[0]
-#y = last_state[1]
-#z = last_state[2]
-#roll = last_state[3]
-#pitch = last_state[4]
-#yaw = last_state[5]
 
-#dx = last_state[6]
-#dy = last_state[7]
-#dz = last_state[8]
-#droll = last_state[9]
-#dpitch = last_state[10]
-#dyaw = last_state[11]
+dx = last_state[0]
+dy = last_state[1]
+dz = last_state[2]
+droll = last_state[3]
+dpitch = last_state[4]
+dyaw = last_state[5]
 
-#ddx = ddpos[0]
-#ddy = ddpos[1]
-#ddz = ddpos[2]
-#ddroll = ddtheta[0]
-#ddpitch = ddtheta[1]
-#ddyaw = ddtheta[2]
+roll = last_state[6]
+pitch = last_state[7]
+yaw = last_state[8]
+
+
+
+ddx = ddpos[0]
+ddy = ddpos[1]
+ddz = ddpos[2]
+ddroll = ddtheta[0]
+ddpitch = ddtheta[1]
+ddyaw = ddtheta[2]
 
 g = 9.81
 
@@ -114,71 +113,72 @@ def cosTE(x):
     #return cos(x)
 
 
-
+#would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(last_state[4]))/m,
+    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(pitch))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(last_state[3]))/m,
+    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]) - m*g*sinTE(roll))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(last_state[3])*cosTE(last_state[4]))/m,
+    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]) - m*g*cosTE(roll)*cosTE(pitch))/m,
     # 4
-    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[10]*last_state[11] + Izz*last_state[10]*last_state[11]))/Ixx,
+    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[4]*last_state[5] + Izz*last_state[4]*last_state[5]))/Ixx,
     # 5
-    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[9]*last_state[11] + Izz*last_state[9]*last_state[11]))/Iyy,
+    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[3]*last_state[5] + Izz*last_state[3]*last_state[5]))/Iyy,
     # 6
-    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
+    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[3]*last_state[4] - Iyy*last_state[3]*last_state[4]))/Izz
 )
 
-f_spatial = rotEB(last_state[3], last_state[4], last_state[5])@f
 
-
-
-
-
+rotEBMatrix = rotEB(roll, pitch, yaw)
+zero_row = horzcat(0,0,0,0,0,0)
+#print(skew(w_t)[0,:].shape)
+#print(horzcat(skew(w_t)[0,:] ,0,0,0).shape)
+#fspatial  = f
+fspatial = rotEBMatrix@f
+print(fspatial.shape)
 u_vec = vertcat(
     u_th,
     u_ti
 )
 state_vec = vertcat(
-    pos,
-    theta,
     dpos,
     dtheta,
+    theta
 )
 
 
 
-A = jacobian(f_spatial, last_state)
+A = jacobian(fspatial, last_state)
 print((A.shape))
-B = jacobian(f_spatial, last_input)
+B = jacobian(fspatial, last_input)
 print((B.shape))
 
 result_vec = vertcat(
     ddpos,
     ddtheta
 )
-euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
+#euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
+euler_lagrange = (result_vec) - (A@(state_vec)) - (B@(u_vec-last_input))
 
 
 #print(euler_lagrange)
 
-#simulator nonlinear model 
-
-
-target_point = np.array([[.0],[0.0],[.2]])
+target_velocity = np.array([[5.0],[0.0],[2.001]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
+mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
 
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
+n_horizon = 20
 
 setup_mpc = {
-    'n_horizon': 20,
+    'n_horizon': n_horizon,
     'n_robust': 1,
     'open_loop': 0,
+    't_step': 0.01,
     't_step': 0.01,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
@@ -191,20 +191,20 @@ setup_mpc = {
 
 mpc_controller.set_param(**setup_mpc)
 
-n_horizon = 20
 
 mterm = mpc_model.aux['mterm']
 lterm = mpc_model.aux['cost']
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=1e-5)
-mpc_controller.set_rterm(u_ti=1e-4)
+mpc_controller.set_rterm(u_th=1e-7)
+mpc_controller.set_rterm(u_ti=1e-6)
 
-tilt_limit = pi/2
+tilt_limit = pi/(2.2)
 thrust_limit = 50
 u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
 u_lower_limits =  np.array([0.0, 0.0, 0.0, 0.0])
+#u_tilt_bounds = np.array([0.0, 0.0, 0.0, 0.0])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
@@ -234,13 +234,15 @@ class TVPData:
         self.x = x0
         self.u = u0
         self.drone_accel = drone_accel
+     
+       
     
 
-x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,.0,0.0,0.0,0.0,0.0,0.0])
+x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
-u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
-
+u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
+init_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
+#target_point0 = np.array([[2.0],[0.0], [3.0]])
 tvp = TVPData(x0, u0, init_acceleration)
 
 
@@ -250,14 +252,19 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
+
+
         return controller_tvp_template
 mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
 
 
 estimator = do_mpc.estimator.StateFeedback(mpc_model)
+estimator.x0 = x0
 
-##setting up nonlinear simulator (clean up later)
+
+##setting up nonlinear simulator 
+
 mpc_modelsim = do_mpc.model.Model("continuous")
 
 
@@ -277,66 +284,71 @@ u_ti_s = mpc_modelsim.set_variable('inputs',  'u_ti_s', (4, 1))
 
 #representing dynamics
 
-T1s = u_th_s[0]
-T2s = u_th_s[1]
-T3s = u_th_s[2]
-T4s = u_th_s[3]
-theta1s = u_ti_s[0]
-theta2s = u_ti_s[1]
-theta3s = u_ti_s[2]
-theta4s = u_ti_s[3]
+T1 = u_th_s[0]
+T2 = u_th_s[1]
+T3 = u_th_s[2]
+T4 = u_th_s[3]
+theta1 = u_ti_s[0]
+theta2 = u_ti_s[1]
+theta3 = u_ti_s[2]
+theta4 = u_ti_s[3]
 
-xs = pos_s[0]
-ys = pos_s[1]
-zs = pos_s[2]
-rolls = theta_s[0]
-pitchs = theta_s[1]
-yaws = theta_s[2]
+x = pos_s[0]
+y = pos_s[1]
+z = pos_s[2]
+roll = theta_s[0]
+pitch = theta_s[1]
+yaw = theta_s[2]
 
-dxs = dpos_s[0]
-dys = dpos_s[1]
-dzs = dpos_s[2]
-drolls = dtheta_s[0]
-dpitchs = dtheta_s[1]
-dyaws = dtheta_s[2]
+dx = dpos_s[0]
+dy = dpos_s[1]
+dz = dpos_s[2]
+droll = dtheta_s[0]
+dpitch = dtheta_s[1]
+dyaw = dtheta_s[2]
 
-ddxs = ddpos_s[0]
-ddys = ddpos_s[1]
-ddzs = ddpos_s[2]
-ddrolls = ddtheta_s[0]
-ddpitchs = ddtheta_s[1]
-ddyaws = ddtheta_s[2]
+ddx = ddpos_s[0]
+ddy = ddpos_s[1]
+ddz = ddpos_s[2]
+ddroll = ddtheta_s[0]
+ddpitch = ddtheta_s[1]
+ddyaw = ddtheta_s[2]
 
 
 f_sim= vertcat(
     
     # 1
-(T2s*sin(theta2s) - T4s*sin(theta4s) - m*g*sin(pitchs))/m,
+(T2*sin(theta2) - T4*sin(theta4) - m*g*sin(pitch))/m,
     # 2
-(T1s*sin(theta1s) - T3s*sin(theta3s) - m*g*sin(rolls))/m,
+(T1*sin(theta1) - T3*sin(theta3) - m*g*sin(roll))/m,
     # 3
-(T1s*cos(theta1s) + T2s*cos(theta2s) + T3s*cos(theta3s) + T4s*cos(theta4s) - m*g*cos(rolls)*cos(pitchs))/m,
+(T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(roll)*cos(pitch))/m,
     # 4
-((T2s*cos(theta2s)*arm_length) - (T4s*cos(theta4s)*arm_length) + (Iyy*dpitchs*dys - Izz*dpitchs*dys))/Ixx,
+((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
     # 5
-(T1s*cos(theta1s)*arm_length - T3s*cos(theta3s)*arm_length + (-Ixx*drolls*dys + Izz*drolls*dys))/Iyy,
+(T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
     # 6
-(T1s*sin(theta1s)*arm_length + T2s*sin(theta2s)*arm_length + T3s*sin(theta3s)*arm_length + T4s*sin(theta4s)*arm_length + (Ixx*drolls*dpitchs - Iyy*drolls*dpitchs))/Izz,
+(T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
+w_tsim = vertcat(dtheta_s[0]
+,dtheta_s[1]
+,dtheta_s[2])
+v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
+rotEBMatrixsim = rotEB(roll,pitch,yaw)
+#euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
+#euler_lagrange_simspatial = euler_lagrange_sim
+f_simspatial = rotEBMatrixsim@f_sim
 
-spatial_accelerations_s = rotEB(rolls, pitchs, yaws)@f_sim
 
-euler_spatial_sim = vertcat(ddpos_s, ddtheta_s) - spatial_accelerations_s
-
-
+euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
 
 mpc_modelsim.set_rhs('pos_s', dpos_s)
 mpc_modelsim.set_rhs('theta_s', dtheta_s)
 mpc_modelsim.set_rhs('dpos_s', ddpos_s)
 mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
 
-mpc_modelsim.set_alg('euler_lagrange_sim', euler_spatial_sim)
+mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_simspatial)
 mpc_modelsim.setup()
 
 simulator = do_mpc.simulator.Simulator(mpc_modelsim)
@@ -353,8 +365,6 @@ simulator.set_param(**params_simulator)
 
 
 simulator.setup()
-
-estimator.x0 = x0
 
 
 
@@ -375,37 +385,47 @@ mpl.rcParams['axes.grid'] = True
 #u0 = mpc_controller.make_step(x0)
 
 simulator.reset_history()
-simulator.x0 = x0
+x0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+simulator.x0 = x0sim
+
+
+
 
 mpc_controller.set_initial_guess()
 dt = .01
-
+curr_roll = 0.0
+curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-for i in range(40):
+for i in range(20):
     start = time.time()
     u0 = mpc_controller.make_step(x0)
     end = time.time()
     print("Computation time: ", end-start)
-    x0 = simulator.make_step(u0)
-
-    drone_acceleration = (np.array(x0[6:]) - last_x0_dot )/dt
-    tvp.x = x0
-    tvp.u = u0
-    tvp.drone_accel = drone_acceleration
+    x0sim = simulator.make_step(u0)
+    x0 = vertcat(x0sim[6:12],x0sim[3:6])
+    drone_acceleration = (np.array(x0[0:6]) - last_x0_dot )/dt
+    #tvp.x = x0
+    #tvp.u = u0
+    #tvp.drone_accel = drone_acceleration
+    #tvp.target_point = np.array([[cos(i*pi/180)*1.],[sin(i*pi/180)*1.],[3.]])
+    #tvp.target_point = np.array([[2.0],[0.0], [3.0]])
+    #curr_roll = curr_roll + float(x0[3]*dt)
+    #curr_pitch = curr_pitch + float(x0[4]*dt)
+    
 
     #print("u")
     #print(u0)
     #print("\n")
     #print("x")
-    #print(x0)
+    #print(x0sim)
     #print("\n")
-    print("a")
-    print(drone_acceleration)
+    #print("a")
+    #print(drone_acceleration)
     #print("\n")
 
     #print("sep")
     print(i)
-    last_x0_dot = np.array(x0[6:])
+    last_x0_dot = np.array(x0[0:6])
 
 fig, ax = plt.subplots()
 
@@ -415,7 +435,7 @@ y_vel = mpc_controller.data['_x'][:, 1]
 z_vel = mpc_controller.data['_x'][:, 2]
 
 roll_graph = mpc_controller.data['_x'][:, 3]
-pitch_graph = mpc_controller.data['_x'][:,4]
+pitch_graph = mpc_controller.data['_x'][:, 4]
 yaw_graph = mpc_controller.data['_x'][:, 5]
 
 
@@ -436,9 +456,6 @@ ax.legend()
 # Display the plot
 plt.show()
     
-
-
-
 
 
 
