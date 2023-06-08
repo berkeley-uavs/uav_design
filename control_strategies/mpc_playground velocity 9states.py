@@ -239,8 +239,12 @@ class TVPData:
 
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
-u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
+u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
+#u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+
+init_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
+#init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
+
 #target_point0 = np.array([[2.0],[0.0], [3.0]])
 tvp = TVPData(x0, u0, init_acceleration)
 
@@ -337,7 +341,7 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-f_simspatial = vertcat(((rotEBMatrixsim[0:3, 0:3])@f_sim[0:3] + 2* (skew(w_tsim)@v_tsim)), f_sim[3:6])
+f_simspatial = rotEBMatrixsim@f_sim
 
 
 euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial

@@ -159,7 +159,7 @@ result_vec = vertcat(
     ddtheta
 )
 #euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
-euler_lagrange = (result_vec) - (A@(state_vec)) - (B@(u_vec))
+euler_lagrange = (result_vec) - (A@(state_vec)) - (B@(u_vec-last_input))
 
 
 #print(euler_lagrange)
@@ -338,7 +338,7 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-f_simspatial = vertcat(((rotEBMatrixsim[0:3, 0:3])@f_sim[0:3] + 2* (skew(w_tsim)@v_tsim)), f_sim[3:6])
+f_simspatial = rotEBMatrixsim@f_sim
 
 
 euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
