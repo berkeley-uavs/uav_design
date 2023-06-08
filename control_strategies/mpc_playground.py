@@ -116,12 +116,6 @@ def cosTE(x):
 
 
 f = vertcat(
-    last_state[6],
-    last_state[7],
-    last_state[8],
-    last_state[9],
-    last_state[10],
-    last_state[11],
 
     (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]) - m*g*sinTE(last_state[4]))/m,
     # 2
@@ -136,13 +130,11 @@ f = vertcat(
     (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[9]*last_state[10] - Iyy*last_state[9]*last_state[10]))/Izz
 )
 
-spatial_velocities = rotEB(last_state[3], last_state[4], last_state[5])@f[0:6]
-w_t = vertcat(last_state[9], last_state[10], last_state[11])
-v_t = vertcat(last_state[6], last_state[7],last_state[8])
+f_spatial = rotEB(last_state[3], last_state[4], last_state[5])@f
 
-spatial_accelerations = vertcat((rotEB(last_state[3], last_state[4], last_state[5])[0:3,0:3]@f[6:9] + (2* skew(w_t)@v_t)), f[9:12])
 
-f_spatial = vertcat(spatial_velocities, spatial_accelerations)
+
+
 
 u_vec = vertcat(
     u_th,
@@ -166,7 +158,7 @@ result_vec = vertcat(
     ddpos,
     ddtheta
 )
-euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u_vec-last_input))[6:]
+euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input))
 
 
 #print(euler_lagrange)
@@ -174,10 +166,10 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state))[6:] - (B@(u
 #simulator nonlinear model 
 
 
-target_point = np.array([[5.0],[0.0],[2.0]])
+target_point = np.array([[.0],[0.0],[.2]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_point[0])**2 + (dpos[1]-target_point[1])**2 + (dpos[2]-target_point[2])**2)))
+mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
+mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((pos[0]-target_point[0])**2 + (pos[1]-target_point[1])**2 + (pos[2]-target_point[2])**2)))
 
 mpc_model.setup()
 
@@ -333,11 +325,7 @@ f_sim= vertcat(
 )
 
 
-w_t_s = vertcat(drolls, dpitchs, dyaws)
-v_t_s = vertcat(dxs, dys,dzs)
-
-spatial_accelerations_s = vertcat((rotEB(rolls, pitchs, yaws)[0:3,0:3]@f_sim[0:3] + (2* skew(w_t_s)@v_t_s)), f_sim[3:6])
-
+spatial_accelerations_s = rotEB(rolls, pitchs, yaws)@f_sim
 
 euler_spatial_sim = vertcat(ddpos_s, ddtheta_s) - spatial_accelerations_s
 
@@ -422,22 +410,22 @@ for i in range(40):
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-x_vel = mpc_controller.data['_x'][:, 6]
-y_vel = mpc_controller.data['_x'][:, 7]
-z_vel = mpc_controller.data['_x'][:, 8]
+x_vel = mpc_controller.data['_x'][:, 0]
+y_vel = mpc_controller.data['_x'][:, 1]
+z_vel = mpc_controller.data['_x'][:, 2]
 
-roll_graph = mpc_controller.data['_x'][:, 9]
-pitch_graph = mpc_controller.data['_x'][:,10]
-yaw_graph = mpc_controller.data['_x'][:, 11]
+roll_graph = mpc_controller.data['_x'][:, 3]
+pitch_graph = mpc_controller.data['_x'][:,4]
+yaw_graph = mpc_controller.data['_x'][:, 5]
 
 
 # Plot the data
-ax.plot(t, x_vel, label='xv')
-ax.plot(t, y_vel, label='yv')
-ax.plot(t, z_vel, label='zv')
-ax.plot(t, roll_graph, label='rv')
-ax.plot(t, pitch_graph, label='pv')
-ax.plot(t, yaw_graph, label='yawv')
+ax.plot(t, x_vel, label='x')
+ax.plot(t, y_vel, label='y')
+ax.plot(t, z_vel, label='z')
+ax.plot(t, roll_graph, label='r')
+ax.plot(t, pitch_graph, label='p')
+ax.plot(t, yaw_graph, label='yaw')
 
 
 
