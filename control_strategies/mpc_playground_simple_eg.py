@@ -43,13 +43,15 @@ def cosTE(x):
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat((u_thrust[0] / m))
 
-A = jacobian(f, last_state)
-print((A.shape))
-B = jacobian(f, last_input)
-print((B.shape))
+# A = jacobian(f, last_state)
+# print((A.shape))
+# B = jacobian(f, last_input)
+# print((B.shape))
 
-euler_lagrange = (dvel-drone_accel) - (A@(x_vel-last_state)) - (B@(u_thrust-last_input))
+# euler_lagrange = (dvel-drone_accel) - (A@(x_vel-last_state)) - (B@(u_thrust-last_input))
+euler_lagrange = dvel - f
 
+# TARGET VEL
 target_velocity = np.array([[0.3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((x_vel[0]-target_velocity[0])**2 +.000000001*sqrt((u_thrust[0])**2 ))))
