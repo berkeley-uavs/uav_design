@@ -50,16 +50,16 @@ def rotEB(r,p,y):
     return rotEBm
 
 #print(rotEB(rotBE(0,0,math.pi)))
-dpos = mpc_model.set_variable('states',  'dpos', (3, 1))
-dtheta = mpc_model.set_variable('states',  'dtheta', (3, 1))
-theta = mpc_model.set_variable('states',  'theta', (3, 1))
+dpos = mpc_model.set_variable('_x',  'dpos', (3, 1))
+dtheta = mpc_model.set_variable('_x',  'dtheta', (3, 1))
+theta = mpc_model.set_variable('_x',  'theta', (3, 1))
 
-u_th = mpc_model.set_variable('inputs',  'u_th', (4, 1))
-u_ti = mpc_model.set_variable('inputs',  'u_ti', (4, 1))
+u_th = mpc_model.set_variable('_u',  'u_th', (4, 1))
+u_ti = mpc_model.set_variable('_u',  'u_ti', (4, 1))
 
 
-ddpos = mpc_model.set_variable('algebraic',  'ddpos', (3, 1))
-ddtheta = mpc_model.set_variable('algebraic',  'ddtheta', (3, 1))
+ddpos = mpc_model.set_variable('_z',  'ddpos', (3, 1))
+ddtheta = mpc_model.set_variable('_z',  'ddtheta', (3, 1))
 last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(9, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
@@ -72,22 +72,22 @@ mpc_model.set_rhs('dpos', ddpos)
 mpc_model.set_rhs('theta', dtheta)
 mpc_model.set_rhs('dtheta', ddtheta)
 
-T1 = last_input[0]
-T2 = last_input[1]
-T3 = last_input[2]
-T4 = last_input[3]
-theta1 = last_input[4]
-theta2 = last_input[5]
-theta3 = last_input[6]
-theta4 = last_input[7]
+#T1 = last_input[0]
+#T2 = last_input[1]
+#T3 = last_input[2]
+#T4 = last_input[3]
+#theta1 = last_input[4]
+#theta2 = last_input[5]
+#theta3 = last_input[6]
+#theta4 = last_input[7]
 
 
-dx = last_state[0]
-dy = last_state[1]
-dz = last_state[2]
-droll = last_state[3]
-dpitch = last_state[4]
-dyaw = last_state[5]
+#dx = last_state[0]
+#dy = last_state[1]
+#dz = last_state[2]
+#droll = last_state[3]
+#dpitch = last_state[4]
+#dyaw = last_state[5]
 
 roll = last_state[6]
 pitch = last_state[7]
@@ -95,12 +95,12 @@ yaw = last_state[8]
 
 
 
-ddx = ddpos[0]
-ddy = ddpos[1]
-ddz = ddpos[2]
-ddroll = ddtheta[0]
-ddpitch = ddtheta[1]
-ddyaw = ddtheta[2]
+#ddx = ddpos[0]
+#ddy = ddpos[1]
+#ddz = ddpos[2]
+#ddroll = ddtheta[0]
+#ddpitch = ddtheta[1]
+#ddyaw = ddtheta[2]
 
 g = 9.81
 
@@ -163,10 +163,11 @@ euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[.0],[0.0],[.3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
-mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
+targetvel = np.array([[0.0],[0.0],[0.001]])
+
+diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
+mpc_model.set_expression('diff', diff)
 
 mpc_model.setup()
 
@@ -175,29 +176,27 @@ n_horizon = 20
 
 setup_mpc = {
     'n_horizon': n_horizon,
-    'n_robust': 1,
+    'n_robust': 0,
     'open_loop': 0,
-    't_step': 0.01,
-    't_step': 0.01,
+    't_step': 0.04,
     'state_discretization': 'collocation',
     'collocation_type': 'radau',
     'collocation_deg': 3,
     'collocation_ni': 1,
     'store_full_solution': True,
     # Use MA27 linear solver in ipopt for faster calculations:
-    'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0, 'ipopt.sb': 'yes', 'print_time':0}
+    'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0, 'print_time':0}
 }
 
 mpc_controller.set_param(**setup_mpc)
 
-
-mterm = mpc_model.aux['mterm']
-lterm = mpc_model.aux['cost']
+mterm = mpc_model.aux['diff'] # terminal cost
+lterm = mpc_model.aux['diff'] # stage cost
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=1e-7)
-mpc_controller.set_rterm(u_ti=1e-6)
+mpc_controller.set_rterm(u_th=0.1)
+mpc_controller.set_rterm(u_ti=0.001)
 
 tilt_limit = pi/(2.2)
 thrust_limit = 50
@@ -207,7 +206,6 @@ u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
-x_limits = np.array([inf, inf, inf, pi/6, pi/6, pi/6, .1, .1, .1, 1, 1, 1])
 
 mpc_controller.bounds['lower','_u','u_th'] = -u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
@@ -242,7 +240,7 @@ mpc_controller.x0 = x0
 #u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
 u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
 
-init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
+init_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 #init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
 
 #target_point0 = np.array([[2.0],[0.0], [3.0]])
@@ -262,8 +260,7 @@ mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
 
 
-estimator = do_mpc.estimator.StateFeedback(mpc_model)
-estimator.x0 = x0
+
 
 
 ##setting up nonlinear simulator 
@@ -341,7 +338,7 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-f_simspatial = rotEBMatrixsim@f_sim #- vertcat(0.0,0.0,g,0.0,0.0,0.0)
+f_simspatial = rotEBMatrixsim@f_sim - vertcat(0.0,0.0,g,0.0,0.0,0.0)
 
 
 euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
@@ -359,15 +356,17 @@ simulator = do_mpc.simulator.Simulator(mpc_modelsim)
 params_simulator = {
     # Note: cvode doesn't support DAE systems.
     'integration_tool': 'idas',
-    'abstol': 1e-10,
-    'reltol': 1e-10,
-    't_step': 0.01
+    'abstol': 1e-8,
+    'reltol': 1e-8,
+    't_step': 0.04
 }
 
 simulator.set_param(**params_simulator)
 
 
 simulator.setup()
+
+estimator = do_mpc.estimator.StateFeedback(mpc_modelsim)
 
 
 
@@ -390,6 +389,7 @@ mpl.rcParams['axes.grid'] = True
 simulator.reset_history()
 x0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 simulator.x0 = x0sim
+estimator.x0 = x0sim
 
 
 
@@ -406,7 +406,9 @@ for i in range(20):
 
     end = time.time()
     print("Computation time: ", end-start)
-    x0sim = simulator.make_step(u0)
+     
+    ynext= simulator.make_step(u0)
+    x0sim = estimator.make_step(ynext)
     x0 = vertcat(x0sim[6:12],x0sim[3:6])
     drone_acceleration = (np.array(x0[0:6]) - last_x0_dot )/dt
     tvp.x = x0

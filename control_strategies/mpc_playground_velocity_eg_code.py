@@ -2,6 +2,10 @@ import numpy as np
 import sys
 from casadi import *
 import time
+import math
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import time
 
 # Add do_mpc to path. This is not necessary if it was installed via pip
 import os
@@ -121,13 +125,16 @@ f = vertcat(
     (T1*sin(theta1)*L + T2*sin(theta2)*L + T3*sin(theta3)*L + T4*sin(theta4)*L + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
  )
 
-euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw) - rotEB(roll, pitch, yaw)@f + [0,0,g,0,0,0]
+euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- rotEB(roll, pitch, yaw)@f + [0,0,g,0,0,0]
 model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
 
-
+targetvel = np.array([[0.3],[0.0],[0.001]])
 model.set_expression('E_kin', E_kin)
+
+diff = ((dx-targetvel[0])**2 + (dy-targetvel[1])**2 + (dz-targetvel[2])**2)
+model.set_expression('diff', diff)
 
 # Build the model
 model.setup()
@@ -135,7 +142,7 @@ model.setup()
 mpc = do_mpc.controller.MPC(model)
 
 setup_mpc = {
-    'n_horizon': 100,
+    'n_horizon': 15,
     'n_robust': 0,
     'open_loop': 0,
     't_step': 0.04,
@@ -149,8 +156,11 @@ setup_mpc = {
 }
 mpc.set_param(**setup_mpc)
 
-mterm = model.aux['E_kin'] # terminal cost
-lterm = model.aux['E_kin'] # stage cost
+#mterm = model.aux['E_kin'] # terminal cost
+#lterm = model.aux['E_kin'] # stage cost
+
+mterm = model.aux['diff'] # terminal cost
+lterm = model.aux['diff'] # stage cost
 
 mpc.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
@@ -196,54 +206,6 @@ estimator.x0 = x0
 
 mpc.set_initial_guess()
 
-import matplotlib.pyplot as plt
-plt.ion()
-from matplotlib import rcParams
-rcParams['text.usetex'] = False
-rcParams['axes.grid'] = True
-rcParams['lines.linewidth'] = 2.0
-rcParams['axes.labelsize'] = 'xx-large'
-rcParams['xtick.labelsize'] = 'xx-large'
-rcParams['ytick.labelsize'] = 'xx-large'
-
-mpc_graphics = do_mpc.graphics.Graphics(mpc.data)
-
-fig = plt.figure(figsize=(16,9))
-
-ax1 = plt.subplot2grid((4, 2), (0, 0), rowspan=4)
-ax2 = plt.subplot2grid((4, 2), (0, 1))
-ax3 = plt.subplot2grid((4, 2), (1, 1))
-ax4 = plt.subplot2grid((4, 2), (2, 1))
-ax5 = plt.subplot2grid((4, 2), (3, 1))
-
-# ax2.set_ylabel('$E_{kin}$ [J]')
-# ax3.set_ylabel('$E_{pot}$ [J]')
-# ax4.set_ylabel('Angle  [rad]')
-# ax5.set_ylabel('Input force [N]')
-
-# Axis on the right.
-for ax in [ax2, ax3, ax4, ax5]:
-    ax.yaxis.set_label_position("right")
-    ax.yaxis.tick_right()
-    if ax != ax5:
-        ax.xaxis.set_ticklabels([])
-
-ax5.set_xlabel('time [s]')
-
-mpc_graphics.add_line(var_type='_aux', var_name='E_kin', axis=ax2)
-mpc_graphics.add_line(var_type='_x', var_name='theta', axis=ax4)
-
-ax1.axhline(0,color='black')
-
-bar1 = ax1.plot([],[], '-o', linewidth=5, markersize=10)
-bar2 = ax1.plot([],[], '-o', linewidth=5, markersize=10)
-
-ax1.set_xlim(-1.8,1.8)
-ax1.set_ylim(-1.2,1.2)
-ax1.set_axis_off()
-
-fig.align_ylabels()
-fig.tight_layout()
 
 u0 = mpc.make_step(x0)
 
@@ -259,8 +221,38 @@ for k in range(n_steps):
     end = time.time()
     print("Computation time: ", end-start)
 
-from matplotlib.animation import FuncAnimation, FFMpegWriter, ImageMagickWriter
 
 # The function describing the gif:
-x_arr = mpc.data['_x']
+fig, ax = plt.subplots()
+
+t = mpc.data['_time']
+x_vel = mpc.data['_x'][:, 6]
+y_vel = mpc.data['_x'][:, 7]
+z_vel = mpc.data['_x'][:, 8]
+
+roll_graph = mpc.data['_x'][:, 9]
+pitch_graph = mpc.data['_x'][:, 10]
+yaw_graph = mpc.data['_x'][:, 11]
+
+
+# Plot the data
+ax.plot(t, x_vel, label='x')
+ax.plot(t, y_vel, label='y')
+ax.plot(t, z_vel, label='z')
+ax.plot(t, roll_graph, label='r')
+ax.plot(t, pitch_graph, label='p')
+ax.plot(t, yaw_graph, label='yaw')
+
+
+
+
+# Add a legend to the plot
+ax.legend()
+
+# Display the plot
+plt.show()
+    
+
+
+
 
