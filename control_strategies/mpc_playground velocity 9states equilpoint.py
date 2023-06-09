@@ -164,7 +164,7 @@ euler_lagrange = (result_vec) - (A@(state_vec)) - (B@(u_vec)) + vertcat(0.0,0.0,
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[.0],[0.0],[.001]])
+target_velocity = np.array([[.0],[0.0],[.3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
@@ -331,13 +331,11 @@ f_sim= vertcat(
 (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
-w_tsim = vertcat(dtheta_s[0]
-,dtheta_s[1]
-,dtheta_s[2])
-v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
-rotEBMatrixsim = rotEB(roll,pitch,yaw)
+
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
+rotEBMatrixsim = rotEB(roll, pitch, yaw)
+
 f_simspatial = rotEBMatrixsim@f_sim - vertcat([0.0,0.0,g,0.0,0.0,0.0])
 
 
@@ -399,6 +397,9 @@ last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 for i in range(20):
     start = time.time()
     u0 = mpc_controller.make_step(x0)
+    u0 = np.array([[18.1],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
+
+
     end = time.time()
     print("Computation time: ", end-start)
     x0sim = simulator.make_step(u0)
@@ -413,11 +414,11 @@ for i in range(20):
     #curr_pitch = curr_pitch + float(x0[4]*dt)
     
 
-    #print("u")
-    #print(u0)
+    print("u")
+    print(u0)
     #print("\n")
-    #print("x")
-    #print(x0sim)
+    print("x")
+    print(x0sim)
     #print("\n")
     #print("a")
     #print(drone_acceleration)
