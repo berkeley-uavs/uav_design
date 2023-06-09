@@ -158,12 +158,12 @@ result_vec = vertcat(
     ddpos,
     ddtheta
 )
-euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input)) + vertcat(0.0,0.0,g,0.0,0.0,0.0)
+euler_lagrange = (result_vec-drone_acc) - (A@(state_vec-last_state)) - (B@(u_vec-last_input)) #+ vertcat(0.0,0.0,g,0.0,0.0,0.0)
 
 
 #print(euler_lagrange)
 
-target_velocity = np.array([[.0],[0.0],[.1]])
+target_velocity = np.array([[.0],[0.0],[.3]])
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 mpc_model.set_expression(expr_name='cost', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) +.00000000001*sqrt((u_th[0])**2 + (u_th[1])**2 + (u_th[2])**2 + (u_th[3])**2 )))
 mpc_model.set_expression(expr_name='mterm', expr=sum1(.9*sqrt((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)))
@@ -240,7 +240,7 @@ class TVPData:
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 mpc_controller.x0 = x0
 #u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
-u0 = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+u0 = [m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]
 
 init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
 #init_acceleration = np.array([[0.0],[0.0],[-9.81],[0.0],[0.0],[0.0]])
@@ -341,7 +341,7 @@ v_tsim = vertcat(dpos_s[0],dpos_s[1], dpos_s[2])
 rotEBMatrixsim = rotEB(roll,pitch,yaw)
 #euler_lagrange_simspatial= vertcat(((rotEBMatrixsim[0:3, 0:3] + skew(w_tsim) + skew(w_tsim)@skew(w_tsim))@euler_lagrange_sim[0:3]), euler_lagrange_sim[3],euler_lagrange_sim[4], euler_lagrange_sim[5])
 #euler_lagrange_simspatial = euler_lagrange_sim
-f_simspatial = rotEBMatrixsim@f_sim - vertcat(0.0,0.0,g,0.0,0.0,0.0)
+f_simspatial = rotEBMatrixsim@f_sim #- vertcat(0.0,0.0,g,0.0,0.0,0.0)
 
 
 euler_lagrange_simspatial = vertcat(ddpos_s,ddtheta_s) - f_simspatial
@@ -401,7 +401,9 @@ curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 for i in range(20):
     start = time.time()
+    
     u0 = mpc_controller.make_step(x0)
+
     end = time.time()
     print("Computation time: ", end-start)
     x0sim = simulator.make_step(u0)
@@ -416,8 +418,8 @@ for i in range(20):
     #curr_pitch = curr_pitch + float(x0[4]*dt)
     
 
-    #print("u")
-    #print(u0)
+    print("u")
+    print(u0)
     #print("\n")
     #print("x")
     #print(x0sim)
