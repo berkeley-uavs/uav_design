@@ -1,6 +1,7 @@
 import numpy as np
 import sys
 from casadi import *
+import time
 
 # Add do_mpc to path. This is not necessary if it was installed via pip
 import os
@@ -98,7 +99,7 @@ setup_mpc = {
     'collocation_ni': 1,
     'store_full_solution': True,
     # Use MA27 linear solver in ipopt for faster calculations:
-    'nlpsol_opts': {'ipopt.linear_solver': 'mumps'}
+    'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0}
 }
 mpc.set_param(**setup_mpc)
 
@@ -231,9 +232,12 @@ mpc.reset_history()
 
 n_steps = 100
 for k in range(n_steps):
+    start = time.time()
     u0 = mpc.make_step(x0)
     y_next = simulator.make_step(u0)
     x0 = estimator.make_step(y_next)
+    end = time.time()
+    print("Computation time: ", end-start)
 
 from matplotlib.animation import FuncAnimation, FFMpegWriter, ImageMagickWriter
 
