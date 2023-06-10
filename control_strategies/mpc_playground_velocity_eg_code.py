@@ -20,8 +20,8 @@ model = do_mpc.model.Model(model_type)
 
 m = 1.8
 L = 0.2286  # m,  length of tarm
-Ixx = 1.2
-Iyy = 1.1
+Ixx = 1.0
+Iyy = 1.0
 Izz = 1.0
 
 g = 9.80665 # m/s^2, Gravity
@@ -125,7 +125,7 @@ f = vertcat(
     (T1*sin(theta1)*L + T2*sin(theta2)*L + T3*sin(theta3)*L + T4*sin(theta4)*L + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
  )
 
-euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- rotEB(roll, pitch, yaw)@f + [0,0,g,0,0,0]
+euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- rotEB(roll, pitch, yaw)@f + vertcat(0,0,g,0,0,0)
 model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
