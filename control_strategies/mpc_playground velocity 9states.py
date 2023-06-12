@@ -163,7 +163,7 @@ euler_lagrange = (result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-l
 #print(euler_lagrange)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.2],[0.0],[0.5]])
+targetvel = np.array([[0.5],[0.0],[0.0]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)
@@ -171,7 +171,7 @@ mpc_model.set_expression('diff', diff)
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
-n_horizon = 25
+n_horizon = 20
 
 setup_mpc = {
     'n_horizon': n_horizon,
@@ -230,8 +230,8 @@ mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
 
-#u0 = np.array([m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]).T
-u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
+u0 = np.array([m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]).T
+#u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
 
 drone_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 #drone_acceleration = np.array([0.0,0.0,-9.81,0.0,0.0,0.0])

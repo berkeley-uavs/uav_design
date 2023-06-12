@@ -130,7 +130,7 @@ model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
 
-targetvel = np.array([[0.3],[0.0],[0.001]])
+targetvel = np.array([[0.2],[0.0],[0.5]])
 model.set_expression('E_kin', E_kin)
 
 diff = ((dx-targetvel[0])**2 + (dy-targetvel[1])**2 + (dz-targetvel[2])**2)
@@ -142,7 +142,7 @@ model.setup()
 mpc = do_mpc.controller.MPC(model)
 
 setup_mpc = {
-    'n_horizon': 15,
+    'n_horizon': 25,
     'n_robust': 0,
     'open_loop': 0,
     't_step': 0.04,
@@ -212,7 +212,7 @@ u0 = mpc.make_step(x0)
 # Quickly reset the history of the MPC data object.
 mpc.reset_history()
 
-n_steps = 100
+n_steps = 40
 for k in range(n_steps):
     start = time.time()
     u0 = mpc.make_step(x0)
