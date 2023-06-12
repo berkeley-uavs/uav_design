@@ -156,13 +156,14 @@ print((B.shape))
 
 result_vec = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)
 
-euler_lagrange = (result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + vertcat(0.0,0.0,g,0.0,0.0,0.0)
+euler_lagrange = (result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + (drone_acc - f + vertcat(0,0,g,0,0,0))
+#+ vertcat(0.0,0.0,g,0.0,0.0,0.0)
  #(A@(state_vec-last_state))
 
 #print(euler_lagrange)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.0],[0.0],[0.5]])
+targetvel = np.array([[0.2],[0.0],[0.5]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)
@@ -383,14 +384,16 @@ mpl.rcParams['axes.grid'] = True
 #u0 = mpc_controller.make_step(x0)
 
 x0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+u0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+sim_acc = np.array([0.0,0.0,0.0,0.0,0.0,0.0]).T
 simulator.x0 = x0sim
 estimator.x0 = x0sim
 
-simulator.u0 = u0
-simulator.z0 = drone_acceleration
+simulator.u0 = u0sim
+simulator.z0 = sim_acc
 
-estimator.u0 = u0
-estimator.z0 = drone_acceleration
+estimator.u0 = u0sim
+estimator.z0 = sim_acc
 
 
 
