@@ -102,8 +102,6 @@ ddpitch = ddtheta[1]
 ddyaw = ddtheta[2]
 
 
-
-
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
@@ -129,12 +127,17 @@ euler_ang_vel_lin = vertcat((droll + dyaw*cos(roll)*tan(pitch) + dpitch*sin(roll
                         ((dyaw*cos(roll)/(cos(pitch))) + dpitch*(sin(roll)/cos(pitch)))
 )
 
-w_eul = vertcat(euler_ang_vel)
+w_eul = vertcat(euler_ang_vel_lin)
+droll_eul, dpitch_eul, dyaw_eul = w_eul
 v_b = vertcat(last_state[0:3])
 alpha_b = vertcat(drone_acc[3:6])
 r_b = vertcat(last_state[9:12])
 
-alpha_eul = 
+alpha_eul = vertcat(
+    horzcat(0,      (cos(roll)*droll_eul*tan(pitch) + dpitch_eul*sin(roll)*1/cos(pitch)**2),                (-sin(roll)*droll_eul*tan(pitch) + dpitch_eul*cos(roll)*1/cos(pitch)**2)),
+    horzcat(0,      (droll_eul*-sin(roll)),                                                                 (droll_eul*-cos(roll))),
+    horzcat(0,      (cos(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*sin(roll)*1/cos(pitch)),      (sin(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*cos(roll)*1/cos(pitch)))
+)
 
 fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
 fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
