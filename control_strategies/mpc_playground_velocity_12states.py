@@ -128,17 +128,26 @@ euler_ang_vel_lin = vertcat((droll + dyaw*cos(roll)*tan(pitch) + dpitch*sin(roll
 )
 
 w_eul = vertcat(euler_ang_vel_lin)
-droll_eul, dpitch_eul, dyaw_eul = w_eul
+droll_eul = w_eul[0] 
+dpitch_eul = w_eul[1]
+dyaw_eul = w_eul[2]
 v_b = vertcat(last_state[0:3])
 alpha_b = vertcat(drone_acc[3:6])
 r_b = vertcat(last_state[9:12])
 
-alpha_eul = vertcat(
+T_dot = vertcat(
     horzcat(0,      (cos(roll)*droll_eul*tan(pitch) + dpitch_eul*sin(roll)*1/cos(pitch)**2),                (-sin(roll)*droll_eul*tan(pitch) + dpitch_eul*cos(roll)*1/cos(pitch)**2)),
     horzcat(0,      (droll_eul*-sin(roll)),                                                                 (droll_eul*-cos(roll))),
     horzcat(0,      (cos(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*sin(roll)*1/cos(pitch)),      (sin(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*cos(roll)*1/cos(pitch)))
 )
 
+T = vertcat(
+    horzcat(1, sin(roll)*tan(pitch), cos(roll)*tan(pitch)),
+    horzcat(0,cos(roll), - sin(roll)),
+    horzcat(0, sin(roll)/cos(pitch), cos(roll)/cos(pitch))
+
+)
+alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
 fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
 fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
 #fspatial_rotation_acc = vertcat(f[3:6])
@@ -166,7 +175,7 @@ print(C)
 euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + (drone_acc - fspatial + vertcat(0,0,g,0,0,0))
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.0],[0.0],[0.5]])
+targetvel = np.array([[0.5],[0.0],[0.1]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)
@@ -324,12 +333,31 @@ f_sim= vertcat(
 )
 
 w_eul = vertcat(euler_ang_vel_s)
+
 v_b = vertcat(dx, dy, dz)
 alpha_b = vertcat(ddroll, ddpitch, ddyaw)
 r_b = vertcat(x, y, z)
+droll_eul = w_eul[0] 
+dpitch_eul = w_eul[1]
+dyaw_eul = w_eul[2]
 
-f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew(rotEB(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
-f_rotation_acc_sim = vertcat(f_sim[3:6]) #+ skew(w_b)@alpha_b)
+T_dot = vertcat(
+    horzcat(0,      (cos(roll)*droll_eul*tan(pitch) + dpitch_eul*sin(roll)*1/cos(pitch)**2),                (-sin(roll)*droll_eul*tan(pitch) + dpitch_eul*cos(roll)*1/cos(pitch)**2)),
+    horzcat(0,      (droll_eul*-sin(roll)),                                                                 (droll_eul*-cos(roll))),
+    horzcat(0,      (cos(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*sin(roll)*1/cos(pitch)),      (sin(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*cos(roll)*1/cos(pitch)))
+)
+
+T = vertcat(
+    horzcat(1, sin(roll)*tan(pitch), cos(roll)*tan(pitch)),
+    horzcat(0,cos(roll), - sin(roll)),
+    horzcat(0, sin(roll)/cos(pitch), cos(roll)/cos(pitch))
+
+)
+alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
+
+f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew((alpha_eul))@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
+f_rotation_acc_sim = vertcat(f_sim[3:6])
+ #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
 euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
