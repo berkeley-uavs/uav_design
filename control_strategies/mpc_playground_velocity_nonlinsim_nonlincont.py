@@ -56,7 +56,7 @@ def rotEB(r,p,y):
     return rotEBm
 
 pos = model.set_variable('_x',  'pos', (3,1))
-theta = model.set_variable('_x',  'theta', (3,1))
+eulerang = model.set_variable('_x',  'eulerang', (3,1))
 dpos = model.set_variable('_x',  'dpos', (3,1))
 dtheta = model.set_variable('_x',  'dtheta', (3,1))
 
@@ -66,9 +66,24 @@ u_tilt = model.set_variable('_u',  'tilt', (4,1))
 ddpos = model.set_variable('_z', 'ddpos', (3,1))
 ddtheta = model.set_variable('_z', 'ddtheta', (3,1))
 
+eulroll = eulerang[0]
+eulpitch = eulerang[1]
+eulyaw = eulerang[2]
+droll_c = dtheta[0]
+dpitch_c = dtheta[1]
+dyaw_c = dtheta[2]
+
+
+#euler_ang_vel = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
+              #          (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
+             #           ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+#)
+
+euler_ang_vel = vertcat(droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch), (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)), (dyaw_c*cos(eulroll)*(cot(eulpitch))) + dpitch_c*(sin(eulroll)*sec(eulpitch)))
+
 model.set_rhs('pos', dpos)
-model.set_rhs('theta', dtheta)
 model.set_rhs('dpos', ddpos)
+model.set_rhs('eulerang', euler_ang_vel)
 model.set_rhs('dtheta', ddtheta)
 
 #second order taylor series approx of sin
@@ -93,9 +108,9 @@ theta4 = u_tilt[3]
 x = pos[0]
 y = pos[1]
 z = pos[2]
-roll = theta[0]
-pitch = theta[1]
-yaw = theta[2]
+roll = eulerang[0]
+pitch = eulerang[1]
+yaw = eulerang[2]
 
 dx = dpos[0]
 dy = dpos[1]

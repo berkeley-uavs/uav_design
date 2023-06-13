@@ -21,6 +21,15 @@ estimator = None
 u = None
 x = None
 
+g = 9.81
+
+#second order taylor series approx of sin
+def sinTE(x):
+    return x - ((x)**3)/6
+    #return sin(x)
+def cosTE(x):
+    return 1 -(x**2)/2
+    #return cos(x)
 
 def rotBE(r,p,y):
 
@@ -44,7 +53,8 @@ def rotEB(r,p,y):
 #print(rotEB(rotBE(0,0,math.pi)))
 dpos = mpc_model.set_variable('_x',  'dpos', (3, 1))
 dtheta = mpc_model.set_variable('_x',  'dtheta', (3, 1))
-theta = mpc_model.set_variable('_x',  'theta', (3, 1))
+eulerang = mpc_model.set_variable('_x',  'eulerang', (3, 1))
+#dtheta is in terms of BODY ANGULAR VELOCITIES, while theta is in terms of SPATIAL EULER ANGLES
 pos = mpc_model.set_variable('_x',  'pos', (3, 1))
 
 u_th = mpc_model.set_variable('_u',  'u_th', (4, 1))
@@ -58,9 +68,20 @@ last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 #hardcode in targetpoint later for now
 
+eulroll = eulerang[0]
+eulpitch = eulerang[1]
+eulyaw = eulerang[2]
+droll_c = dtheta[0]
+dpitch_c = dtheta[1]
+dyaw_c = dtheta[2]
+
+euler_ang_vel = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
+                        (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
+                        ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+)
 mpc_model.set_rhs('pos', dpos)
 mpc_model.set_rhs('dpos', ddpos)
-mpc_model.set_rhs('theta', dtheta)
+mpc_model.set_rhs('eulerang', euler_ang_vel)
 mpc_model.set_rhs('dtheta', ddtheta)
 
 roll = last_state[6]
@@ -74,15 +95,7 @@ ddroll = ddtheta[0]
 ddpitch = ddtheta[1]
 ddyaw = ddtheta[2]
 
-g = 9.81
 
-#second order taylor series approx of sin
-def sinTE(x):
-    return x - ((x)**3)/6
-    #return sin(x)
-def cosTE(x):
-    return 1 -(x**2)/2
-    #return cos(x)
 
 
 #would have to change to add roll and pitch for g term (still from last state input ig)
@@ -112,6 +125,7 @@ r_b = vertcat(last_state[9:12])
 
 fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_b)@v_b + skew(alpha_b)@r_b + skew(w_b)@(skew(w_b)@r_b))
 fspatial_rotation_acc = vertcat(f[3:6] + skew(w_b)@alpha_b)
+#fspatial_rotation_acc = vertcat(f[3:6])
 fspatial = vertcat(fspatial_linear_acc, fspatial_rotation_acc)
 # print(fspatial)
 u_vec = vertcat(
@@ -121,7 +135,7 @@ u_vec = vertcat(
 state_vec = vertcat(
     dpos,
     dtheta,
-    theta,
+    eulerang,
     pos
 )
 result_vec = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)
@@ -136,7 +150,7 @@ print(C)
 euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + (drone_acc - fspatial + vertcat(0,0,g,0,0,0))
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.5],[0.0],[0.0]])
+targetvel = np.array([[0.0],[0.0],[0.5]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)
@@ -144,7 +158,7 @@ mpc_model.set_expression('diff', diff)
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
-n_horizon = 20
+n_horizon = 15
 
 setup_mpc = {
     'n_horizon': n_horizon,
@@ -171,14 +185,14 @@ mpc_controller.set_rterm(u_th=0.1)
 mpc_controller.set_rterm(u_ti=0.01)
 
 tilt_limit = pi/(2.2)
-thrust_limit = 80
+thrust_limit = 30
 u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
 u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
 
 
-mpc_controller.bounds['lower','_u','u_th'] = -u_upper_limits
+mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
 mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
 mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
@@ -218,7 +232,7 @@ mpc_controller.setup()
 mpc_modelsim = do_mpc.model.Model("continuous")
 
 pos_s = mpc_modelsim.set_variable('states',  'pos_s', (3, 1))
-theta_s = mpc_modelsim.set_variable('states',  'theta_s', (3, 1))
+eulerang_s = mpc_modelsim.set_variable('states',  'eulerang_s', (3, 1))
 dpos_s = mpc_modelsim.set_variable('states',  'dpos_s', (3, 1))
 dtheta_s = mpc_modelsim.set_variable('states',  'dtheta_s', (3, 1))
 ddpos_s = mpc_modelsim.set_variable('algebraic',  'ddpos_s', (3, 1))
@@ -227,6 +241,24 @@ ddtheta_s = mpc_modelsim.set_variable('algebraic',  'ddtheta_s', (3, 1))
 #inputs
 u_th_s = mpc_modelsim.set_variable('inputs',  'u_th_s', (4, 1))
 u_ti_s = mpc_modelsim.set_variable('inputs',  'u_ti_s', (4, 1))
+
+eulroll = eulerang_s[0]
+eulpitch = eulerang_s[1]
+eulyaw = eulerang_s[2]
+droll_c = dtheta_s[0]
+dpitch_c = dtheta_s[1]
+dyaw_c = dtheta_s[2]
+
+euler_ang_vel_s = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
+                        (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
+                        ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+)
+
+
+mpc_modelsim.set_rhs('pos_s', dpos_s)
+mpc_modelsim.set_rhs('dpos_s', ddpos_s)
+mpc_modelsim.set_rhs('eulerang_s', euler_ang_vel_s)
+mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
 
 #representing dynamics
 T1 = u_th_s[0]
@@ -241,9 +273,9 @@ theta4 = u_ti_s[3]
 x = pos_s[0]
 y = pos_s[1]
 z = pos_s[2]
-roll = theta_s[0]
-pitch = theta_s[1]
-yaw = theta_s[2]
+roll = eulerang_s[0]
+pitch = eulerang_s[1]
+yaw = eulerang_s[2]
 
 dx = dpos_s[0]
 dy = dpos_s[1]
@@ -286,12 +318,9 @@ f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
 euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
 
-mpc_modelsim.set_rhs('pos_s', dpos_s)
-mpc_modelsim.set_rhs('theta_s', dtheta_s)
-mpc_modelsim.set_rhs('dpos_s', ddpos_s)
-mpc_modelsim.set_rhs('dtheta_s', ddtheta_s)
 
-mpc_modelsim.set_alg('euler_lagrange_sim', euler_lagrange_simspatial)
+
+mpc_modelsim.set_alg('euler_lagrange_simspatial', euler_lagrange_simspatial)
 mpc_modelsim.setup()
 
 simulator = do_mpc.simulator.Simulator(mpc_modelsim)
@@ -359,6 +388,7 @@ for i in range(40):
      
     ynext= simulator.make_step(u0)
     x0sim = estimator.make_step(ynext)
+    print("sim")
     # sim is pos, theta, dpos, dtheta
     # controller is dpos, dtheta, theta, pos 
     x0 = vertcat(x0sim[6:12],x0sim[3:6], x0sim[0:3])
