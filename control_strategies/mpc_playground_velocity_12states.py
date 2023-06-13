@@ -84,9 +84,15 @@ mpc_model.set_rhs('dpos', ddpos)
 mpc_model.set_rhs('eulerang', euler_ang_vel)
 mpc_model.set_rhs('dtheta', ddtheta)
 
-roll = last_state[6]
+
+droll = last_state[3]
+dpitch = last_state[4]
+dyaw = last_state[5]
+
+roll = last_state[6]  #euler angles
 pitch = last_state[7]
 yaw = last_state[8]
+
 
 ddx = ddpos[0]
 ddy = ddpos[1]
@@ -118,12 +124,19 @@ f = vertcat(
 rotEBMatrix = rotEB(roll, pitch, yaw)
 zero_row = horzcat(0,0,0,0,0,0)
 
-w_b = vertcat(last_state[3:6])
+euler_ang_vel_lin = vertcat((droll + dyaw*cos(eulroll)*tan(eulpitch) + dpitch*sin(eulroll)*tan(eulpitch)),
+                        (dpitch*cos(eulroll) - dyaw*sin(eulroll)),
+                        ((dyaw*cos(eulroll)/(cos(eulpitch))) + dpitch*(sin(eulroll)/cos(eulpitch)))
+)
+
+w_eul = vertcat(euler_ang_vel)
 v_b = vertcat(last_state[0:3])
 alpha_b = vertcat(drone_acc[3:6])
 r_b = vertcat(last_state[9:12])
 
-fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_b)@v_b + skew(alpha_b)@r_b + skew(w_b)@(skew(w_b)@r_b))
+alpha_eul = 
+
+fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
 fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
 #fspatial_rotation_acc = vertcat(f[3:6])
 fspatial = vertcat(fspatial_linear_acc, fspatial_rotation_acc)
@@ -307,12 +320,12 @@ f_sim= vertcat(
 (T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
-w_b = vertcat(droll, dpitch, dyaw)
+w_eul = vertcat(euler_ang_vel_s)
 v_b = vertcat(dx, dy, dz)
 alpha_b = vertcat(ddroll, ddpitch, ddyaw)
 r_b = vertcat(x, y, z)
 
-f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_b)@v_b + skew(alpha_b)@r_b + skew(w_b)@(skew(w_b)@r_b)))
+f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew(rotEB(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
 f_rotation_acc_sim = vertcat(f_sim[3:6]) #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
