@@ -79,7 +79,7 @@ dyaw_c = dtheta[2]
              #           ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
 #)
 
-euler_ang_vel = vertcat(droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch), (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)), (dyaw_c*cos(eulroll)*(cot(eulpitch))) + dpitch_c*(sin(eulroll)*sec(eulpitch)))
+euler_ang_vel = vertcat(droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch), (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)), (dyaw_c*cos(eulroll)/(cos(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
 
 model.set_rhs('pos', dpos)
 model.set_rhs('dpos', ddpos)

@@ -77,7 +77,7 @@ dyaw_c = dtheta[2]
 
 euler_ang_vel = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
                         (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
-                        ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+                        ((dyaw_c*cos(eulroll)/(cos(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
 )
 mpc_model.set_rhs('pos', dpos)
 mpc_model.set_rhs('dpos', ddpos)
@@ -124,7 +124,7 @@ alpha_b = vertcat(drone_acc[3:6])
 r_b = vertcat(last_state[9:12])
 
 fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_b)@v_b + skew(alpha_b)@r_b + skew(w_b)@(skew(w_b)@r_b))
-fspatial_rotation_acc = vertcat(f[3:6] + skew(w_b)@alpha_b)
+fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
 #fspatial_rotation_acc = vertcat(f[3:6])
 fspatial = vertcat(fspatial_linear_acc, fspatial_rotation_acc)
 # print(fspatial)
@@ -251,7 +251,7 @@ dyaw_c = dtheta_s[2]
 
 euler_ang_vel_s = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
                         (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
-                        ((dyaw_c*cos(eulroll)/(tan(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+                        ((dyaw_c*cos(eulroll)/(cos(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
 )
 
 
@@ -313,7 +313,7 @@ alpha_b = vertcat(ddroll, ddpitch, ddyaw)
 r_b = vertcat(x, y, z)
 
 f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_b)@v_b + skew(alpha_b)@r_b + skew(w_b)@(skew(w_b)@r_b)))
-f_rotation_acc_sim = vertcat(f_sim[3:6] + skew(w_b)@alpha_b)
+f_rotation_acc_sim = vertcat(f_sim[3:6]) #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
 euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
