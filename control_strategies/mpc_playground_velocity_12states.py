@@ -124,9 +124,9 @@ f = vertcat(
 rotEBMatrix = rotEB(roll, pitch, yaw)
 zero_row = horzcat(0,0,0,0,0,0)
 
-euler_ang_vel_lin = vertcat((droll + dyaw*cos(eulroll)*tan(eulpitch) + dpitch*sin(eulroll)*tan(eulpitch)),
-                        (dpitch*cos(eulroll) - dyaw*sin(eulroll)),
-                        ((dyaw*cos(eulroll)/(cos(eulpitch))) + dpitch*(sin(eulroll)/cos(eulpitch)))
+euler_ang_vel_lin = vertcat((droll + dyaw*cos(roll)*tan(pitch) + dpitch*sin(roll)*tan(pitch)),
+                        (dpitch*cos(roll) - dyaw*sin(roll)),
+                        ((dyaw*cos(roll)/(cos(pitch))) + dpitch*(sin(roll)/cos(pitch)))
 )
 
 w_eul = vertcat(euler_ang_vel)
