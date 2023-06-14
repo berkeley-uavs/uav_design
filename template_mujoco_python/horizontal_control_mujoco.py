@@ -94,7 +94,7 @@ def controller(model, data):
     des_cntrls = np.array([[hor_cntrl] [hor_cntrl_y] [vert_cntrl] [cntrl_roll] [cntrl_pitch] [cntrl_yaw]])
 
 
-    mixer_matrix = np.array([(cos(np.pi/4)*cos(curr_ang0)),0, (cos(np.pi/4)*cos(curr_ang2)), 0, 0o ])
+    mixer_matrix = np.array([(cos(np.pi/4)*cos(curr_ang0)),0, (cos(np.pi/4)*cos(curr_ang2)), 0, 0 ])
 
     data.ctrl[4] = (ang0 - curr_ang0)/.25
     data.ctrl[5] = (ang2 - curr_ang2)/.25

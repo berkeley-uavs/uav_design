@@ -140,12 +140,40 @@ f = vertcat(
     (T1*sin(theta1)*L + T2*sin(theta2)*L + T3*sin(theta3)*L + T4*sin(theta4)*L + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
  )
 
-euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- rotEB(roll, pitch, yaw)@f + vertcat(0,0,g,0,0,0)
+w_eul = vertcat(euler_ang_vel)
+
+v_b = vertcat(dx, dy, dz)
+alpha_b = vertcat(ddroll, ddpitch, ddyaw)
+r_b = vertcat(x, y, z)
+droll_eul = w_eul[0] 
+dpitch_eul = w_eul[1]
+dyaw_eul = w_eul[2]
+
+T_dot = vertcat(
+    horzcat(0,      (cos(eulroll)*droll_eul*tan(eulpitch) + dpitch_eul*sin(eulroll)*1/cos(eulpitch)**2),                (-sin(eulroll)*droll_eul*tan(eulpitch) + dpitch_eul*cos(eulroll)*1/cos(eulpitch)**2)),
+    horzcat(0,      (-droll_eul*sin(eulroll)),                                                                 (droll_eul*-cos(eulroll))),
+    horzcat(0,      (cos(eulroll)*droll_eul*1/cos(eulpitch) + tan(eulpitch)*dpitch_eul*sin(eulroll)*1/cos(eulpitch)),      (sin(eulroll)*droll_eul*1/cos(eulpitch) + tan(eulpitch)*dpitch_eul*cos(eulroll)*1/cos(eulpitch)))
+)
+
+T = vertcat(
+    horzcat(1, sin(eulroll)*tan(eulpitch), cos(eulroll)*tan(eulpitch)),
+    horzcat(0,cos(eulroll), - sin(eulroll)),
+    horzcat(0, sin(eulroll)/cos(eulpitch), cos(eulroll)/cos(eulpitch))
+
+)
+alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
+
+f_linear_acc_sim = vertcat(((rotEB(eulroll, eulpitch, eulyaw)@(f))[0:3] + 2 * skew(w_eul)@v_b + skew((alpha_eul))@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
+
+f_rotation_acc_sim = vertcat(f[3:6])
+ #+ skew(w_b)@alpha_b)
+f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
+euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
 model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
 
-targetvel = np.array([[0.2],[0.0],[0.5]])
+targetvel = np.array([[0.5],[0.0],[0.3]])
 model.set_expression('E_kin', E_kin)
 
 diff = ((dx-targetvel[0])**2 + (dy-targetvel[1])**2 + (dz-targetvel[2])**2)
@@ -245,9 +273,9 @@ x_vel = mpc.data['_x'][:, 6]
 y_vel = mpc.data['_x'][:, 7]
 z_vel = mpc.data['_x'][:, 8]
 
-roll_graph = mpc.data['_x'][:, 9]
-pitch_graph = mpc.data['_x'][:, 10]
-yaw_graph = mpc.data['_x'][:, 11]
+roll_graph = mpc.data['_x'][:, 3]
+pitch_graph = mpc.data['_x'][:, 4]
+yaw_graph = mpc.data['_x'][:, 5]
 
 
 # Plot the data

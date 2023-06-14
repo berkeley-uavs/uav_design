@@ -34,9 +34,18 @@ def cosTE(x):
 def rotBE(r,p,y):
 
     
-    rotBErow1 = horzcat((cos(y)*cos(p)), (sin(y)*cos(p)), (-sin(p)),0,0,0)
-    rotBErow2 = horzcat((cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),(cos(p)*sin(r)),0,0,0)
-    rotBErow3 = horzcat((cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), (cos(p)*cos(r)),0,0,0)
+    rotBErow1 = horzcat(
+                            (cos(y)*cos(p)), 
+                            (sin(y)*cos(p)), 
+                            (-sin(p)),0,0,0)
+    rotBErow2 = horzcat(
+                            (cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), 
+                            (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),
+                            (cos(p)*sin(r)),0,0,0)
+    rotBErow3 = horzcat(
+                            (cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), 
+                            (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), 
+                            (cos(p)*cos(r)),0,0,0)
     rotBErow4 = horzcat(0,0,0,1,0,0)
     rotBErow5 = horzcat(0,0,0,0,1,0)
     rotBErow6 = horzcat(0,0,0,0,0,1)
@@ -68,20 +77,27 @@ last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape
 drone_acc = mpc_model.set_variable(var_type='_tvp', var_name='drone_acc',shape=(6, 1))
 #hardcode in targetpoint later for now
 
-eulroll = eulerang[0]
-eulpitch = eulerang[1]
-eulyaw = eulerang[2]
+eulroll_c = eulerang[0]
+eulpitch_c = eulerang[1]
+eulyaw_c = eulerang[2]
 droll_c = dtheta[0]
 dpitch_c = dtheta[1]
 dyaw_c = dtheta[2]
 
-euler_ang_vel = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
-                        (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
-                        ((dyaw_c*cos(eulroll)/(cos(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+euler_ang_vel_s = vertcat(
+                            (droll_c + 
+                            dyaw_c*cos(eulroll_c)*tan(eulpitch_c) + 
+                            dpitch_c*sin(eulroll_c)*tan(eulpitch_c)),
+
+                            (dpitch_c*cos(eulroll_c) - 
+                            dyaw_c*sin(eulroll_c)),
+
+                            ((dyaw_c*cos(eulroll_c)/(cos(eulpitch_c))) + 
+                            dpitch_c*(sin(eulroll_c)/cos(eulpitch_c)))
 )
 mpc_model.set_rhs('pos', dpos)
 mpc_model.set_rhs('dpos', ddpos)
-mpc_model.set_rhs('eulerang', euler_ang_vel)
+mpc_model.set_rhs('eulerang', euler_ang_vel_s)
 mpc_model.set_rhs('dtheta', ddtheta)
 
 
@@ -89,9 +105,9 @@ droll = last_state[3]
 dpitch = last_state[4]
 dyaw = last_state[5]
 
-roll = last_state[6]  #euler angles
-pitch = last_state[7]
-yaw = last_state[8]
+eulroll = last_state[6]  #euler angles
+eulpitch = last_state[7]
+eulyaw = last_state[8]
 
 
 ddx = ddpos[0]
@@ -105,26 +121,50 @@ ddyaw = ddtheta[2]
 #would have to change to add roll and pitch for g term (still from last state input ig)
 f = vertcat(
 
-    (last_input[1]*sinTE(last_input[5]) - last_input[3]*sinTE(last_input[7]))/m,
+    (last_input[1]*sinTE(last_input[5]) -   
+    last_input[3]*sinTE(last_input[7]))/m,
     # 2
-    (last_input[0]*sinTE(last_input[4]) - last_input[2]*sinTE(last_input[6]))/m,
+    (last_input[0]*sinTE(last_input[4]) - 
+    last_input[2]*sinTE(last_input[6]))/m,
     # 3
-    (last_input[0]*cosTE(last_input[4]) + last_input[1]*cosTE(last_input[5]) + last_input[2]*cosTE(last_input[6]) + last_input[3]*cosTE(last_input[7]))/m,
+    (last_input[0]*cosTE(last_input[4]) + 
+    last_input[1]*cosTE(last_input[5]) + 
+    last_input[2]*cosTE(last_input[6]) + 
+    last_input[3]*cosTE(last_input[7]))/m,
     # 4
-    ((last_input[1]*cosTE(last_input[5])*arm_length) - (last_input[3]*cosTE(last_input[7])*arm_length) + (Iyy*last_state[4]*last_state[5] + Izz*last_state[4]*last_state[5]))/Ixx,
+    ((last_input[1]*cosTE(last_input[5])*arm_length) - 
+    (last_input[3]*cosTE(last_input[7])*arm_length) + 
+    (Iyy*last_state[4]*last_state[5] + 
+    Izz*last_state[4]*last_state[5]))/Ixx,
     # 5
-    (last_input[0]*cosTE(last_input[4])*arm_length - last_input[2]*cosTE(last_input[6])*arm_length + (-Ixx*last_state[3]*last_state[5] + Izz*last_state[3]*last_state[5]))/Iyy,
+    (last_input[0]*cosTE(last_input[4])*arm_length - 
+    last_input[2]*cosTE(last_input[6])*arm_length + 
+    (-Ixx*last_state[3]*last_state[5] + 
+    Izz*last_state[3]*last_state[5]))/Iyy,
     # 6
-    (last_input[0]*sinTE(last_input[4])*arm_length + last_input[1]*sinTE(last_input[5])*arm_length + last_input[2]*sinTE(last_input[6])*arm_length + last_input[3]*sinTE(last_input[7])*arm_length + (Ixx*last_state[3]*last_state[4] - Iyy*last_state[3]*last_state[4]))/Izz
+    (last_input[0]*sinTE(last_input[4])*arm_length + 
+    last_input[1]*sinTE(last_input[5])*arm_length + 
+    last_input[2]*sinTE(last_input[6])*arm_length + 
+    last_input[3]*sinTE(last_input[7])*arm_length + 
+    (Ixx*last_state[3]*last_state[4] - 
+    Iyy*last_state[3]*last_state[4]))/Izz
 )
 
 
-rotEBMatrix = rotEB(roll, pitch, yaw)
+
+#print(rotEBMatrix)
 zero_row = horzcat(0,0,0,0,0,0)
 
-euler_ang_vel_lin = vertcat((droll + dyaw*cos(roll)*tan(pitch) + dpitch*sin(roll)*tan(pitch)),
-                        (dpitch*cos(roll) - dyaw*sin(roll)),
-                        ((dyaw*cos(roll)/(cos(pitch))) + dpitch*(sin(roll)/cos(pitch)))
+euler_ang_vel_lin = vertcat(
+                                (droll + 
+                                dyaw*cos(eulroll)*tan(eulpitch) + 
+                                dpitch*sin(eulroll)*tan(eulpitch)),
+
+                                (dpitch*cos(eulroll) - 
+                                dyaw*sin(eulroll)),
+
+                                ((dyaw*cos(eulroll)/(cos(eulpitch))) + 
+                                dpitch*(sin(eulroll)/cos(eulpitch)))
 )
 
 w_eul = vertcat(euler_ang_vel_lin)
@@ -136,23 +176,37 @@ alpha_b = vertcat(drone_acc[3:6])
 r_b = vertcat(last_state[9:12])
 
 T_dot = vertcat(
-    horzcat(0,      (cos(roll)*droll_eul*tan(pitch) + dpitch_eul*sin(roll)*1/cos(pitch)**2),                (-sin(roll)*droll_eul*tan(pitch) + dpitch_eul*cos(roll)*1/cos(pitch)**2)),
-    horzcat(0,      (droll_eul*-sin(roll)),                                                                 (droll_eul*-cos(roll))),
-    horzcat(0,      (cos(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*sin(roll)*1/cos(pitch)),      (sin(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*cos(roll)*1/cos(pitch)))
+    horzcat(0,      
+            (cos(eulroll)*droll_eul*tan(eulpitch) + 
+            dpitch_eul*sin(eulroll)*1/cos(eulpitch)**2),                
+            (-sin(eulroll)*droll_eul*tan(eulpitch) + 
+            dpitch_eul*cos(eulroll)*1/cos(eulpitch)**2)),
+
+    horzcat(0,      
+            (droll_eul*-sin(eulroll)), 
+            (droll_eul*-cos(eulroll))),
+    horzcat(0,      
+            (cos(eulroll)*droll_eul*1/cos(eulpitch) + 
+                tan(eulpitch)*dpitch_eul*sin(eulroll)*1/cos(eulpitch)),      
+            (sin(eulroll)*droll_eul*1/cos(eulpitch) + 
+                tan(eulpitch)*dpitch_eul*cos(eulroll)*1/cos(eulpitch)))
 )
 
 T = vertcat(
-    horzcat(1, sin(roll)*tan(pitch), cos(roll)*tan(pitch)),
-    horzcat(0,cos(roll), - sin(roll)),
-    horzcat(0, sin(roll)/cos(pitch), cos(roll)/cos(pitch))
+    horzcat(1, sin(eulroll)*tan(eulpitch), cos(eulroll)*tan(eulpitch)),
+    horzcat(0,cos(eulroll), - sin(eulroll)),
+    horzcat(0, sin(eulroll)/cos(eulpitch), cos(eulroll)/cos(eulpitch))
 
 )
 alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
-fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
+rotEBMatrix = rotEB(last_state[6], last_state[7], last_state[8])
+
+#fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
+fspatial_linear_acc = vertcat((rotEBMatrix@f)[0:3])
 fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
 #fspatial_rotation_acc = vertcat(f[3:6])
 fspatial = vertcat(fspatial_linear_acc, fspatial_rotation_acc)
-# print(fspatial)
+print(fspatial)
 u_vec = vertcat(
     u_th,
     u_ti
@@ -172,12 +226,15 @@ print((B.shape))
 C = jacobian(drone_acc - fspatial, drone_acc)
 print(C)
 
-euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + (drone_acc - fspatial + vertcat(0,0,g,0,0,0))
+euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state)) -(B@(u_vec-last_input)) +(drone_acc - fspatial + vertcat(0,0,g,0,0,0))
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.5],[0.0],[0.1]])
+targetvel = np.array([[0.9],[0.0],[0.2]])
 
-diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
+diff = ((dpos[0]-targetvel[0])**2 + 
+        (dpos[1]-targetvel[1])**2 + 
+        (dpos[2]-targetvel[2])**2)
+
 mpc_model.set_expression('diff', diff)
 
 mpc_model.setup()
@@ -274,9 +331,14 @@ droll_c = dtheta_s[0]
 dpitch_c = dtheta_s[1]
 dyaw_c = dtheta_s[2]
 
-euler_ang_vel_s = vertcat((droll_c + dyaw_c*cos(eulroll)*tan(eulpitch) + dpitch_c*sin(eulroll)*tan(eulpitch)),
-                        (dpitch_c*cos(eulroll) - dyaw_c*sin(eulroll)),
-                        ((dyaw_c*cos(eulroll)/(cos(eulpitch))) + dpitch_c*(sin(eulroll)/cos(eulpitch)))
+euler_ang_vel_s = vertcat((droll_c + 
+                            dyaw_c*cos(eulroll)*tan(eulpitch) + 
+                            dpitch_c*sin(eulroll)*tan(eulpitch)),
+
+                        (dpitch_c*cos(eulroll) - 
+                            dyaw_c*sin(eulroll)),
+                        ((dyaw_c*cos(eulroll)/(cos(eulpitch))) + 
+                            dpitch_c*(sin(eulroll)/cos(eulpitch)))
 )
 
 
@@ -298,9 +360,7 @@ theta4 = u_ti_s[3]
 x = pos_s[0]
 y = pos_s[1]
 z = pos_s[2]
-roll = eulerang_s[0]
-pitch = eulerang_s[1]
-yaw = eulerang_s[2]
+
 
 dx = dpos_s[0]
 dy = dpos_s[1]
@@ -319,17 +379,30 @@ ddyaw = ddtheta_s[2]
 
 f_sim= vertcat(
     # 1
-(T2*sin(theta2) - T4*sin(theta4))/m,
+                (T2*sin(theta2) - 
+                    T4*sin(theta4))/m,
     # 2
-(T1*sin(theta1) - T3*sin(theta3))/m,
+                (T1*sin(theta1) - 
+                    T3*sin(theta3))/m,
     # 3
-(T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4))/m,
+                (T1*cos(theta1) + 
+                    T2*cos(theta2) + 
+                    T3*cos(theta3) + 
+                    T4*cos(theta4))/m,
     # 4
-((T2*cos(theta2)*arm_length) - (T4*cos(theta4)*arm_length) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+                ((T2*cos(theta2)*arm_length) - 
+                    (T4*cos(theta4)*arm_length) + 
+                    (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
     # 5
-(T1*cos(theta1)*arm_length - T3*cos(theta3)*arm_length + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+                (T1*cos(theta1)*arm_length - 
+                    T3*cos(theta3)*arm_length + 
+                    (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
     # 6
-(T1*sin(theta1)*arm_length + T2*sin(theta2)*arm_length + T3*sin(theta3)*arm_length + T4*sin(theta4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
+                (T1*sin(theta1)*arm_length + 
+                    T2*sin(theta2)*arm_length + 
+                    T3*sin(theta3)*arm_length + 
+                    T4*sin(theta4)*arm_length + 
+                    (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
 )
 
 w_eul = vertcat(euler_ang_vel_s)
@@ -342,25 +415,39 @@ dpitch_eul = w_eul[1]
 dyaw_eul = w_eul[2]
 
 T_dot = vertcat(
-    horzcat(0,      (cos(roll)*droll_eul*tan(pitch) + dpitch_eul*sin(roll)*1/cos(pitch)**2),                (-sin(roll)*droll_eul*tan(pitch) + dpitch_eul*cos(roll)*1/cos(pitch)**2)),
-    horzcat(0,      (droll_eul*-sin(roll)),                                                                 (droll_eul*-cos(roll))),
-    horzcat(0,      (cos(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*sin(roll)*1/cos(pitch)),      (sin(roll)*droll_eul*1/cos(pitch) + tan(pitch)*dpitch_eul*cos(roll)*1/cos(pitch)))
+    horzcat(0, 
+            (cos(eulroll)*droll_eul*tan(eulpitch) + 
+                dpitch_eul*sin(eulroll)*1/cos(eulpitch)**2),
+            (-sin(eulroll)*droll_eul*tan(eulpitch) + 
+                dpitch_eul*cos(eulroll)*1/cos(eulpitch)**2)),
+
+    horzcat(0, 
+            (-droll_eul*sin(eulroll)), 
+            (droll_eul*-cos(eulroll))),
+
+    horzcat(0, 
+            (cos(eulroll)*droll_eul*1/cos(eulpitch) + 
+                tan(eulpitch)*dpitch_eul*sin(eulroll)*1/cos(eulpitch)), 
+            (sin(eulroll)*droll_eul*1/cos(eulpitch) + 
+                tan(eulpitch)*dpitch_eul*cos(eulroll)*1/cos(eulpitch)))
 )
 
 T = vertcat(
-    horzcat(1, sin(roll)*tan(pitch), cos(roll)*tan(pitch)),
-    horzcat(0,cos(roll), - sin(roll)),
-    horzcat(0, sin(roll)/cos(pitch), cos(roll)/cos(pitch))
+    horzcat(1, sin(eulroll)*tan(eulpitch), cos(eulroll)*tan(eulpitch)),
+    horzcat(0,cos(eulroll), - sin(eulroll)),
+    horzcat(0, sin(eulroll)/cos(eulpitch), cos(eulroll)/cos(eulpitch))
 
 )
 alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
+rotEBMatrix = rotEB(eulroll, eulpitch, eulyaw)
+#f_linear_acc_sim = vertcat(((rotEB(eulroll, eulpitch, eulyaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew((alpha_eul))@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
+f_linear_acc_sim = vertcat((rotEBMatrix@f_sim)[0:3])
 
-f_linear_acc_sim = vertcat(((rotEB(roll, pitch, yaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew((alpha_eul))@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
 f_rotation_acc_sim = vertcat(f_sim[3:6])
  #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
-euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
+euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw) - f_spatial_sim + vertcat(0,0,g,0,0,0)
 
 
 
@@ -441,11 +528,11 @@ for i in range(40):
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
     
-    # print("u")
-    # print(u0)
-    # print("\n")
-    # print("x")
-    # print(x0sim)
+    print("u")
+    print(u0)
+    print("\n")
+    print("x")
+    print(x0sim)
     # print("\n")
     # print("a")
     # print(drone_acceleration)
