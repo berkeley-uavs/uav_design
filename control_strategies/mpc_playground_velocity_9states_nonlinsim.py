@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
 
+targetvel = np.array([[0.2],[0.1],[0.0]])
 
 m = 1.8  # drone_mass
 arm_length = .2286
@@ -158,12 +159,11 @@ result_vec = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)
 
 euler_lagrange = (result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-last_input)) + (drone_acc - f + vertcat(0,0,g,0,0,0))
 #+ vertcat(0.0,0.0,g,0.0,0.0,0.0)
- #(A@(state_vec-last_state))
+#(A@(state_vec-last_state))
 
 #print(euler_lagrange)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.2],[0.3],[0.6]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)
