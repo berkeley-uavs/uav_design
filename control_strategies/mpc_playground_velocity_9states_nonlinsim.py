@@ -163,7 +163,7 @@ euler_lagrange = (result_vec-drone_acc) -(A@(state_vec-last_state))- (B@(u_vec-l
 #print(euler_lagrange)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.5],[0.0],[0.0]])
+targetvel = np.array([[0.2],[0.1],[0.0]])
 
 diff = ((dpos[0]-targetvel[0])**2 + (dpos[1]-targetvel[1])**2 + (dpos[2]-targetvel[2])**2)
 mpc_model.set_expression('diff', diff)

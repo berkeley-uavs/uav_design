@@ -173,7 +173,7 @@ model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
 
-targetvel = np.array([[0.5],[0.0],[0.3]])
+targetvel = np.array([[0.3],[0.2],[0.6]])
 model.set_expression('E_kin', E_kin)
 
 diff = ((dx-targetvel[0])**2 + (dy-targetvel[1])**2 + (dz-targetvel[2])**2)
