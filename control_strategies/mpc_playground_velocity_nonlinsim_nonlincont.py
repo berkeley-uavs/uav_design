@@ -108,9 +108,7 @@ theta4 = u_tilt[3]
 x = pos[0]
 y = pos[1]
 z = pos[2]
-roll = eulerang[0]
-pitch = eulerang[1]
-yaw = eulerang[2]
+
 
 dx = dpos[0]
 dy = dpos[1]
@@ -127,15 +125,15 @@ ddpitch = ddtheta[1]
 ddyaw = ddtheta[2]
 
 f = vertcat(
-    (T2*sin(theta2) - T4*sin(theta4))/m,
+    (T2*sin(theta2) - T4*sin(theta4)-m*g*sin(eulpitch))/m,
     # 2
-    (T1*sin(theta1) - T3*sin(theta3))/m,
+    (T1*sin(theta1) - T3*sin(theta3)-m*g*sin(eulroll))/m,
     # 3
-    (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4))/m,
+    (T1*cos(theta1) + T2*cos(theta2) + T3*cos(theta3) + T4*cos(theta4) - m*g*cos(eulroll)*cos(eulpitch))/m,
     # 4
-    ((T2*cos(theta2)*L) - (T4*cos(theta4)*L) + (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+    ((T2*cos(theta2)*L) - (T4*cos(theta4)*L) + (Iyy*dpitch*dyaw - Izz*dpitch*dyaw))/Ixx,
     # 5
-    (T1*cos(theta1)*L - T3*cos(theta3)*L + (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+    (T1*cos(theta1)*L - T3*cos(theta3)*L + (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy,
     # 6
     (T1*sin(theta1)*L + T2*sin(theta2)*L + T3*sin(theta3)*L + T4*sin(theta4)*L + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz,
  )
@@ -168,7 +166,7 @@ f_linear_acc_sim = vertcat(((rotEB(eulroll, eulpitch, eulyaw)@(f))[0:3] + 2 * sk
 f_rotation_acc_sim = vertcat(f[3:6])
  #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
-euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim + vertcat(0,0,g,0,0,0)
+euler_lagrange = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)- f_spatial_sim 
 model.set_alg('euler_lagrange', euler_lagrange)
 
 E_kin = m * (dx**2 + dy**2 + dz**2)/2
@@ -185,7 +183,7 @@ model.setup()
 mpc = do_mpc.controller.MPC(model)
 
 setup_mpc = {
-    'n_horizon': 25,
+    'n_horizon': 15,
     'n_robust': 0,
     'open_loop': 0,
     't_step': 0.04,

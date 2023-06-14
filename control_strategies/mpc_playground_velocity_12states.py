@@ -122,15 +122,15 @@ ddyaw = ddtheta[2]
 f = vertcat(
 
     (last_input[1]*sinTE(last_input[5]) -   
-    last_input[3]*sinTE(last_input[7]))/m,
+    last_input[3]*sinTE(last_input[7])-m*g*sin(eulpitch))/m,
     # 2
     (last_input[0]*sinTE(last_input[4]) - 
-    last_input[2]*sinTE(last_input[6]))/m,
+    last_input[2]*sinTE(last_input[6])- m*g*sin(eulroll))/m,
     # 3
     (last_input[0]*cosTE(last_input[4]) + 
     last_input[1]*cosTE(last_input[5]) + 
     last_input[2]*cosTE(last_input[6]) + 
-    last_input[3]*cosTE(last_input[7]))/m,
+    last_input[3]*cosTE(last_input[7]) - m*g*cos(eulroll)*cos(eulpitch))/m,
     # 4
     ((last_input[1]*cosTE(last_input[5])*arm_length) - 
     (last_input[3]*cosTE(last_input[7])*arm_length) + 
@@ -226,7 +226,7 @@ print((B.shape))
 C = jacobian(drone_acc - fspatial, drone_acc)
 print(C)
 
-euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state)) -(B@(u_vec-last_input)) +(drone_acc - fspatial + vertcat(0,0,g,0,0,0))
+euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state)) -(B@(u_vec-last_input)) +(drone_acc - fspatial)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 targetvel = np.array([[0.9],[0.0],[0.2]])
@@ -380,23 +380,23 @@ ddyaw = ddtheta_s[2]
 f_sim= vertcat(
     # 1
                 (T2*sin(theta2) - 
-                    T4*sin(theta4))/m,
+                    T4*sin(theta4) -m*g*sin(eulpitch))/m,
     # 2
                 (T1*sin(theta1) - 
-                    T3*sin(theta3))/m,
+                    T3*sin(theta3) - m*g*sin(eulroll))/m,
     # 3
                 (T1*cos(theta1) + 
                     T2*cos(theta2) + 
                     T3*cos(theta3) + 
-                    T4*cos(theta4))/m,
+                    T4*cos(theta4) - m*g*cos(eulroll)*cos(eulpitch))/m,
     # 4
                 ((T2*cos(theta2)*arm_length) - 
                     (T4*cos(theta4)*arm_length) + 
-                    (Iyy*dpitch*dy - Izz*dpitch*dy))/Ixx,
+                    (Iyy*dpitch*dyaw - Izz*dpitch*dyaw))/Ixx,
     # 5
                 (T1*cos(theta1)*arm_length - 
                     T3*cos(theta3)*arm_length + 
-                    (-Ixx*droll*dy + Izz*droll*dy))/Iyy,
+                    (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy,
     # 6
                 (T1*sin(theta1)*arm_length + 
                     T2*sin(theta2)*arm_length + 
@@ -447,7 +447,7 @@ f_rotation_acc_sim = vertcat(f_sim[3:6])
  #+ skew(w_b)@alpha_b)
 f_spatial_sim = vertcat(f_linear_acc_sim, f_rotation_acc_sim)
 
-euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw) - f_spatial_sim + vertcat(0,0,g,0,0,0)
+euler_lagrange_simspatial = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw) - f_spatial_sim 
 
 
 
