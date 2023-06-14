@@ -37,20 +37,17 @@ def rotBE(r,p,y):
     rotBErow1 = horzcat(
                             (cos(y)*cos(p)), 
                             (sin(y)*cos(p)), 
-                            (-sin(p)),0,0,0)
+                            (-sin(p)))
     rotBErow2 = horzcat(
                             (cos(y)*sin(p) *sin(r) - sin(y)*cos(r)), 
                             (sin(y)*sin(p) * sin(r) + cos(y)*cos(r)),
-                            (cos(p)*sin(r)),0,0,0)
+                            (cos(p)*sin(r)))
     rotBErow3 = horzcat(
                             (cos(y)*sin(p) * cos(r) + sin(y)*sin(r)), 
                             (sin(y)*sin(p) * cos(r) - cos(y)*sin(r)), 
-                            (cos(p)*cos(r)),0,0,0)
-    rotBErow4 = horzcat(0,0,0,1,0,0)
-    rotBErow5 = horzcat(0,0,0,0,1,0)
-    rotBErow6 = horzcat(0,0,0,0,0,1)
-
-    rotBEm = vertcat(rotBErow1, rotBErow2,rotBErow3,rotBErow4,rotBErow5,rotBErow6)
+                            (cos(p)*cos(r)))
+    
+    rotBEm = vertcat(rotBErow1, rotBErow2,rotBErow3)
     return rotBEm
     
 
@@ -202,7 +199,7 @@ alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
 rotEBMatrix = rotEB(last_state[6], last_state[7], last_state[8])
 
 #fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
-fspatial_linear_acc = vertcat((rotEBMatrix@f)[0:3])
+fspatial_linear_acc = vertcat((rotEBMatrix@(f[0:3])))
 fspatial_rotation_acc = vertcat(f[3:6]) #+ skew(w_b)@alpha_b)
 #fspatial_rotation_acc = vertcat(f[3:6])
 fspatial = vertcat(fspatial_linear_acc, fspatial_rotation_acc)
@@ -219,17 +216,17 @@ state_vec = vertcat(
 )
 result_vec = vertcat(ddx, ddy, ddz, ddroll, ddpitch, ddyaw)
 
-A = jacobian(fspatial, last_state)
+A = jacobian(drone_acc -fspatial, last_state)
 print((A.shape))
-B = jacobian(fspatial, last_input)
+B = jacobian(drone_acc - fspatial, last_input)
 print((B.shape))
 C = jacobian(drone_acc - fspatial, drone_acc)
 print(C)
 
-euler_lagrange = C@(result_vec-drone_acc) -(A@(state_vec-last_state)) -(B@(u_vec-last_input)) +(drone_acc - fspatial)
+euler_lagrange = C@(result_vec-drone_acc) +(A@(state_vec-last_state)) +(B@(u_vec-last_input)) +(drone_acc - fspatial)
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
-targetvel = np.array([[0.9],[0.0],[0.2]])
+targetvel = np.array([[0.2],[0.3],[0.0]])
 
 diff = ((dpos[0]-targetvel[0])**2 + 
         (dpos[1]-targetvel[1])**2 + 
@@ -441,7 +438,7 @@ T = vertcat(
 alpha_eul = T@alpha_b + T_dot@vertcat(droll,dpitch,dyaw)
 rotEBMatrix = rotEB(eulroll, eulpitch, eulyaw)
 #f_linear_acc_sim = vertcat(((rotEB(eulroll, eulpitch, eulyaw)@(f_sim))[0:3] + 2 * skew(w_eul)@v_b + skew((alpha_eul))@r_b + skew(w_eul)@(skew(w_eul)@r_b)))
-f_linear_acc_sim = vertcat((rotEBMatrix@f_sim)[0:3])
+f_linear_acc_sim = vertcat((rotEBMatrix@(f_sim[0:3])))
 
 f_rotation_acc_sim = vertcat(f_sim[3:6])
  #+ skew(w_b)@alpha_b)
