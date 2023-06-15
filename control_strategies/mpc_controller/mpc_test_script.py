@@ -11,6 +11,12 @@ from global_vars_mpc import mpc_global_controller
 
 
 
+with open("control_strategies/mpc_controller/12_states_linear_controller.py") as f:
+    exec(f.read())
+
+with open("control_strategies/mpc_controller/12_states_nonlin_sim.py") as f:
+    exec(f.read())
+
 
 mpc_controller = mpc_global_controller.controller
 simulator = global_simulator.sim
@@ -49,7 +55,7 @@ for i in range(40):
     print("sim")
     # sim is pos, theta, dpos, dtheta
     # controller is dpos, dtheta, theta, pos 
-    drone_acceleration = (np.array(x0[6:9]) - last_x0_dot )/dt
+    drone_acceleration = (np.array(x0[6:12]) - last_x0_dot )/dt
     tvp.x = x0
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
@@ -58,23 +64,23 @@ for i in range(40):
     print(u0)
     print("\n")
     print("x")
-    print(x0sim)
+    print(x0)
     # print("\n")
     # print("a")
     # print(drone_acceleration)
     print(i)
-    last_x0_dot = np.array(x0[6:9])
+    last_x0_dot = np.array(x0[6:12])
 
 fig, ax = plt.subplots()
 
 t = mpc_controller.data['_time']
-x_vel = mpc_controller.data['_x'][:, 0]
-y_vel = mpc_controller.data['_x'][:, 1]
-z_vel = mpc_controller.data['_x'][:, 2]
+x_vel = mpc_controller.data['_x'][:, 6]
+y_vel = mpc_controller.data['_x'][:, 7]
+z_vel = mpc_controller.data['_x'][:, 8]
 
-roll_graph = mpc_controller.data['_x'][:, 6]
-pitch_graph = mpc_controller.data['_x'][:,7]
-yaw_graph = mpc_controller.data['_x'][:, 8]
+roll_graph = mpc_controller.data['_x'][:, 3]
+pitch_graph = mpc_controller.data['_x'][:,4]
+yaw_graph = mpc_controller.data['_x'][:, 5]
 
 
 # Plot the data
