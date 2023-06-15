@@ -65,7 +65,7 @@ def f_acc(T1, T2, T3, T4, tilt1, tilt2, tilt3, tilt4,droll, dpitch,dyaw, euler_r
     
     (T1*cosTE(tilt1)*arm_length - T3*cosTE(tilt3)*arm_length + (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy, # 5
     
-    (T1*sinTE(tilt1)*arm_length + T2*sinTE(tilt2)*arm_length + T3*sinTE(tilt3)*arm_length + T4*sinTE(tilt4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz # 6)
+    (T1*sinTE(tilt1)*arm_length + T2*sinTE(tilt2)*arm_length + T3*sinTE(tilt3)*arm_length + T4*sinTE(tilt4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz) # 6)
     return f_acc
 #T_dot and T are for finding euler angle angular accelerations 
 
@@ -81,12 +81,12 @@ def T_dot(euler_roll, euler_pitch, euler_yaw, droll_euler, dpitch_euler, dyaw_eu
             
         horzcat(0,      
             (cos(euler_roll)*droll_euler*1/cos(euler_pitch) + tan(euler_pitch)*dpitch_euler*sin(euler_roll)*1/cos(euler_pitch)),      
-            (sin(euler_roll)*droll_euler*1/cos(euler_pitch) + tan(euler_pitch)*dpitch_euler_tvp*cos(euler_roll)*1/cos(euler_pitch))))
+            (sin(euler_roll)*droll_euler*1/cos(euler_pitch) + tan(euler_pitch)*dpitch_euler*cos(euler_roll)*1/cos(euler_pitch))))
     return T_dot
 
 
 def T(euler_roll, euler_pitch, euler_yaw):
-    T_tvp = vertcat(
+    T = vertcat(
     horzcat(1, sin(euler_roll)*tan(euler_pitch), cos(euler_roll)*tan(euler_pitch)),
     horzcat(0,cos(euler_roll), - sin(euler_roll)),
     horzcat(0, sin(euler_roll)/cos(euler_pitch), cos(euler_roll)/cos(euler_pitch)))
@@ -267,7 +267,10 @@ rotEBMatrix_tvp = rotEB(euler_roll_tvp, euler_pitch_tvp, euler_yaw_tvp)
 fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
 fspatial_rotation_acc_tvp = vertcat(f_bodyacc_tvp[3:6]) 
 fspatial_acc_tvp = vertcat(fspatial_linear_acc_tvp, fspatial_rotation_acc_tvp)
-print(fspatial)
+#print(fspatial_acc_tvp)
+#print("/n")
+#print(fspatial_acc_cont)
+
 u_vec_cont = vertcat(
     u_th,
     u_ti
@@ -285,7 +288,7 @@ print((A.shape))
 B = jacobian(last_acc - fspatial_acc_tvp, last_input)
 print((B.shape))
 C = jacobian(last_acc - fspatial_acc_tvp, last_acc)
-print(C)
+print(C.shape)
 
 
 
@@ -375,7 +378,7 @@ def controller_tvp_fun(t_now):
     for k in range(n_horizon+1):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
-        controller_tvp_template['_tvp',k,'drone_acc'] = tvp.drone_accel
+        controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
 
 
         return controller_tvp_template
