@@ -296,8 +296,8 @@ print(C.shape)
 
 
 
-euler_lagrange = C@(result_vec_cont-last_acc) +(A@(state_vec_cont-last_state)) +(B@(u_vec_cont-last_input)) +(last_acc - fspatial_acc_tvp) - fspatial_acc_cont
-
+#euler_lagrange =  (result_vec_cont -fspatial_acc_cont)
+euler_lagrange = C@(result_vec_cont-last_acc) +(A@(state_vec_cont-last_state)) +(B@(u_vec_cont-last_input)) +(last_acc - fspatial_acc_tvp)  
 
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
@@ -310,7 +310,7 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 #-----------------------Model Parameters----------
-targetvel = np.array([[0.2],[0.3],[0.0]])
+targetvel = np.array([[0.2],[0.3],[0.1]])
 
 diff = ((dpos[0]-targetvel[0])**2 + 
         (dpos[1]-targetvel[1])**2 + 
@@ -321,7 +321,7 @@ mpc_model.set_expression('diff', diff)
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
-n_horizon = 15
+n_horizon = 4
 
 setup_mpc = {
     'n_horizon': n_horizon,
