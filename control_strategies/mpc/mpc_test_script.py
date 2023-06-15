@@ -11,10 +11,10 @@ from global_vars_mpc import mpc_global_controller
 
 
 
-with open("control_strategies/mpc_controller/12_states_linear_controller_12alg.py") as f:
+with open("control_strategies/mpc/12_states_linear_controller_12alg.py") as f:
     exec(f.read())
 
-with open("control_strategies/mpc_controller/12_states_lin_sim.py") as f:
+with open("control_strategies/mpc/12_states_lin_sim.py") as f:
     exec(f.read())
 
 
