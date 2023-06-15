@@ -184,7 +184,7 @@ dyaw_euler_cont = w_euler_cont[2]
 
 v_b_cont = vertcat(dx_cont,dy_cont,dz_cont)#dx,dy,dz
 alpha_b_cont = vertcat(ddroll_cont, ddpitch_cont, ddyaw_cont)
-r_b_tvp = vertcat(xpos_cont, ypos_cont, zpos_cont)#pos
+r_b_cont = vertcat(xpos_cont, ypos_cont, zpos_cont)#pos
 
 
 
@@ -194,7 +194,7 @@ T_dot_cont = T_dot(droll_euler_cont, dpitch_euler_cont, dyaw_euler_cont,euler_ro
 alpha_euler_cont = T_cont@alpha_b_cont + T_dot_cont@vertcat(droll_cont, dpitch_cont, dyaw_cont)
 rotEBMatrix_cont = rotEB(euler_roll_cont, euler_pitch_cont, euler_yaw_cont)
 
-fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
+fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])) + 2 * skew(w_euler_cont)@v_b_cont + skew(alpha_euler_cont)@r_b_cont + skew(w_euler_cont)@(skew(w_euler_cont)@r_b_cont))
 fspatial_rotation_acc_cont = vertcat(f_bodyacc_cont[3:6]) 
 fspatial_acc_cont = vertcat(fspatial_linear_acc_cont, fspatial_rotation_acc_cont)
 
@@ -267,8 +267,8 @@ T_dot_tvp = T_dot(droll_euler_tvp, dpitch_euler_tvp, dyaw_euler_tvp,euler_roll_t
 alpha_euler_tvp = T_tvp@alpha_b_tvp + T_dot_tvp@vertcat(droll_tvp,dpitch_tvp,dyaw_tvp)
 rotEBMatrix_tvp = rotEB(euler_roll_tvp, euler_pitch_tvp, euler_yaw_tvp)
 
-#fspatial_linear_acc = vertcat((rotEBMatrix@(f))[0:3] + 2 * skew(w_eul)@v_b + skew(alpha_eul)@r_b + skew(w_eul)@(skew(w_eul)@r_b))
-fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
+fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])) + 2 * skew(w_euler_tvp)@v_b_tvp + skew(alpha_euler_tvp)@r_b_tvp + skew(w_euler_tvp)@(skew(w_euler_tvp)@r_b_tvp))
+#spatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
 fspatial_rotation_acc_tvp = vertcat(f_bodyacc_tvp[3:6]) 
 fspatial_acc_tvp = vertcat(fspatial_linear_acc_tvp, fspatial_rotation_acc_tvp)
 #print(fspatial_acc_tvp)
