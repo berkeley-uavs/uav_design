@@ -5,6 +5,10 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
+from global_vars_mpc import tvp
+from global_vars_mpc import mpc_global_controller
+
+
 
 
 m = 1.8  # drone_mass
@@ -365,13 +369,8 @@ drone_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 mpc_controller.x0 = x0
 mpc_controller.u0 = u0
 mpc_controller.z0 = drone_acceleration
-class TVPData:
-    def __init__(self, x, u, drone_accel):
-        self.x = x
-        self.u = u
-        self.drone_accel = drone_accel
 
-tvp = TVPData(x0, u0, drone_acceleration)
+
 
 controller_tvp_template = mpc_controller.get_tvp_template()
 def controller_tvp_fun(t_now):
@@ -384,3 +383,6 @@ def controller_tvp_fun(t_now):
         return controller_tvp_template
 mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
+
+mpc_global_controller.controller = mpc_controller
+

@@ -5,6 +5,9 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
+from global_vars_mpc import tvp
+from global_vars_mpc import global_simulator
+
 
 
 m = 1.8  # drone_mass
@@ -227,6 +230,11 @@ simulator.z0 = sim_acc
 
 estimator.u0 = u0sim
 estimator.z0 = sim_acc
+
+global_simulator.sim = simulator
+global_simulator.est = estimator
+
+
 
 
 
