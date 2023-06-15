@@ -56,9 +56,14 @@ def rotEB(r,p,y):
     return rotEBm
 
 
-def f_acc(T1, T2, T3, T4, tilt1, tilt2, tilt3, tilt4,droll, dpitch,dyaw, euler_roll, euler_pitch, euler_yaw ):
+def f_acc(T1, T2, T3, T4, tilt1, tilt2, tilt3, tilt4,droll, dpitch,dyaw, euler_roll, euler_pitch, euler_yaw, dx,dy,dz,droll_euler,dpitch_euler,dyaw_euler):
     f_acc = vertcat(
-
+    dx,
+    dy,
+    dz,
+    droll_euler,
+    dpitch_euler,
+    dyaw_euler,
     (T2*sinTE(tilt2) - T4*sinTE(tilt4) - m*g*sin(euler_pitch))/m, # 1
     
     (T1*sinTE(tilt1) - T3*sinTE(tilt3) - m*g*sin(euler_roll))/m, # 2
@@ -175,12 +180,14 @@ mpc_model.set_rhs('euler_ang', euler_ang_vel_cont)
 mpc_model.set_rhs('dtheta', ddtheta)
 
 
-f_bodyacc_cont = f_acc(T1_cont, T2_cont,T3_cont,T4_cont, tilt1_cont,tilt2_cont,tilt3_cont,tilt4_cont,droll_cont,dpitch_cont,dyaw_cont, euler_roll_cont,euler_pitch_cont,euler_yaw_cont )
 
 w_euler_cont = vertcat(euler_ang_vel_cont)
 droll_euler_cont = w_euler_cont[0] 
 dpitch_euler_cont = w_euler_cont[1]
 dyaw_euler_cont = w_euler_cont[2]
+
+f_bodyacc_cont = f_acc(T1_cont, T2_cont,T3_cont,T4_cont, tilt1_cont,tilt2_cont,tilt3_cont,tilt4_cont,droll_cont,dpitch_cont,dyaw_cont, euler_roll_cont,euler_pitch_cont,euler_yaw_cont, dx_cont,dy_cont,dz_cont,droll_euler_cont,dpitch_euler_cont,dyaw_euler_cont )
+
 
 v_b_cont = vertcat(dx_cont,dy_cont,dz_cont)#dx,dy,dz
 alpha_b_cont = vertcat(ddroll_cont, ddpitch_cont, ddyaw_cont)
@@ -194,8 +201,8 @@ T_dot_cont = T_dot(droll_euler_cont, dpitch_euler_cont, dyaw_euler_cont,euler_ro
 alpha_euler_cont = T_cont@alpha_b_cont + T_dot_cont@vertcat(droll_cont, dpitch_cont, dyaw_cont)
 rotEBMatrix_cont = rotEB(euler_roll_cont, euler_pitch_cont, euler_yaw_cont)
 
-fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
-fspatial_rotation_acc_cont = vertcat(f_bodyacc_cont[3:6]) 
+fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])),f_bodyacc_cont[3:6],(rotEBMatrix_cont@(f_bodyacc_cont[6:9])))
+fspatial_rotation_acc_cont = vertcat(f_bodyacc_cont[9:12]) 
 fspatial_acc_cont = vertcat(fspatial_linear_acc_cont, fspatial_rotation_acc_cont)
 
 # TVP   - xyz pos, dx dy dz, and euler roll pitch yaw are spatial, while droll, dpitch, dyaw are body rates
@@ -239,7 +246,6 @@ tilt3_tvp = last_input[6]
 tilt4_tvp = last_input[7]
 
 #would have to change to add roll and pitch for g term (still from last state input ig)
-f_bodyacc_tvp = f_acc(T1_tvp, T2_tvp,T3_tvp,T4_tvp, tilt1_tvp,tilt2_tvp,tilt3_tvp,tilt4_tvp,droll_tvp,dpitch_tvp,dyaw_tvp, euler_roll_tvp,euler_pitch_tvp,euler_yaw_tvp )
 
 
 euler_ang_vel_tvp = vertcat(
@@ -255,6 +261,8 @@ droll_euler_tvp = w_euler_tvp[0]
 dpitch_euler_tvp = w_euler_tvp[1]
 dyaw_euler_tvp = w_euler_tvp[2]
 
+f_bodyacc_tvp = f_acc(T1_tvp, T2_tvp,T3_tvp,T4_tvp, tilt1_tvp,tilt2_tvp,tilt3_tvp,tilt4_tvp,droll_tvp,dpitch_tvp,dyaw_tvp, euler_roll_tvp,euler_pitch_tvp,euler_yaw_tvp,  dx_tvp,dy_tvp,dz_tvp,droll_euler_tvp,dpitch_euler_tvp,dyaw_euler_tvp)
+
 v_b_tvp = vertcat(dx_tvp,dy_tvp,dz_tvp)#dx,dy,dz
 alpha_b_tvp = vertcat(ddroll_tvp, ddpitch_tvp, ddyaw_tvp)
 r_b_tvp = vertcat(xpos_tvp, ypos_tvp, zpos_tvp)#pos
@@ -267,38 +275,39 @@ T_dot_tvp = T_dot(droll_euler_tvp, dpitch_euler_tvp, dyaw_euler_tvp,euler_roll_t
 alpha_euler_tvp = T_tvp@alpha_b_tvp + T_dot_tvp@vertcat(droll_tvp,dpitch_tvp,dyaw_tvp)
 rotEBMatrix_tvp = rotEB(euler_roll_tvp, euler_pitch_tvp, euler_yaw_tvp)
 
-fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
+fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])),((f_bodyacc_tvp[3:6])),(rotEBMatrix_tvp@(f_bodyacc_tvp[6:9])))
 #spatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
-fspatial_rotation_acc_tvp = vertcat(f_bodyacc_tvp[3:6]) 
+fspatial_rotation_acc_tvp = vertcat(f_bodyacc_tvp[9:12]) 
 fspatial_acc_tvp = vertcat(fspatial_linear_acc_tvp, fspatial_rotation_acc_tvp)
 #print(fspatial_acc_tvp)
 #print("/n")
 #print(fspatial_acc_cont)
 
-u_vec_cont = vertcat(
+
+
+
+
+
+u_vec = vertcat(
     u_th,
     u_ti
 )
-state_vec_cont = vertcat(
-    pos,
-    euler_ang,
-    dpos,
-    dtheta
-)
-result_vec_cont = vertcat(ddx_cont, ddy_cont, ddz_cont, ddroll_cont, ddpitch_cont, ddyaw_cont)
-
-A = jacobian(fspatial_acc_tvp, last_state)
-print((A.shape))
-B = jacobian(fspatial_acc_tvp, last_input)
-print((B.shape))
-C = jacobian(fspatial_acc_tvp, last_acc)
-print(C.shape)
-
 
 
 #euler_lagrange =  (result_vec_cont -fspatial_acc_cont)
-x_dot = vertcat(dx_cont, dy_cont, dz_cont, euler_roll_cont, euler_pitch_cont, euler_yaw_cont)
-last_x 
+x_dot = vertcat(dx_cont, dy_cont, dz_cont, droll_euler_cont, dpitch_euler_cont, dyaw_euler_cont,ddx_cont, ddy_cont, ddz_cont, ddroll_cont, ddpitch_cont, ddyaw_cont)
+last_x_dot = vertcat(dx_cont, dy_cont, dz_cont, droll_euler_cont, dpitch_euler_cont, dyaw_euler_cont,ddx_cont, ddy_cont, ddz_cont, ddroll_cont, ddpitch_cont, ddyaw_cont)
+x = vertcat(xpos_cont, ypos_cont, zpos_cont, euler_roll_cont, euler_pitch_cont, euler_yaw_cont,dx_cont, dy_cont, dz_cont, droll_cont, dpitch_cont, dyaw_cont)
+x_last = vertcat(xpos_tvp, ypos_tvp, zpos_tvp, euler_roll_tvp, euler_pitch_tvp, euler_yaw_tvp,dx_tvp, dy_tvp, dz_tvp, droll_tvp, dpitch_tvp, dyaw_tvp)
+
+
+A = jacobian(fspatial_acc_tvp, x_last)
+print((A.shape))
+B = jacobian(fspatial_acc_tvp, last_input)
+print((B.shape))
+
+
+euler_lagrange = x_dot[6:] - last_x_dot[6:] - (A@(x-x_last))[6:] - (B@(u_vec-last_input))[6:]
 mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
