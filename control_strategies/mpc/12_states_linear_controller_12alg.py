@@ -8,16 +8,12 @@ import time
 from global_vars_mpc import tvp
 from global_vars_mpc import mpc_global_controller
 
-
-
-
 m = 1.8  # drone_mass
 g = 9.81
 arm_length = .2286
 Ixx = 1.0
 Iyy = 1.0
 Izz = 1.0
-
 
 model_type = "continuous"
 mpc_model = do_mpc.model.Model(model_type)
