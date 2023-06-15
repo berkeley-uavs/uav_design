@@ -295,7 +295,7 @@ class TVPData:
 tvp = TVPData(x0, u0, drone_acceleration)
 
 controller_tvp_template = mpc_controller.get_tvp_template()
-def controller_tvp_fun(t_now):
+def controller_tvp_fun(t_now): 
     for k in range(n_horizon+1):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
