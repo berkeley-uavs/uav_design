@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import time
 from global_vars_mpc import tvp
-from global_vars_mpc import mpc_global_controller
+from global_vars_mpc import global_simulator
 
 
 
@@ -307,81 +307,59 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 
-
 #-----------------------Model Parameters----------
-targetvel = np.array([[0.2],[0.3],[0.1]])
-
-diff = ((dpos[0]-targetvel[0])**2 + 
-        (dpos[1]-targetvel[1])**2 + 
-        (dpos[2]-targetvel[2])**2)
-
-mpc_model.set_expression('diff', diff)
 
 mpc_model.setup()
 
-mpc_controller = do_mpc.controller.MPC(mpc_model)
-n_horizon = 20
 
-setup_mpc = {
-    'n_horizon': n_horizon,
-    'n_robust': 0,
-    'open_loop': 0,
-    't_step': 0.04,
-    'state_discretization': 'collocation',
-    'collocation_type': 'radau',
-    'collocation_deg': 3,
-    'collocation_ni': 1,
-    'store_full_solution': True,
-    # Use MA27 linear solver in ipopt for faster calculations:
-    'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0}
+
+simulator = do_mpc.simulator.Simulator(mpc_model)
+
+simulator_tvp_template = simulator.get_tvp_template()
+def simulator_tvp_fun(t_now):
+    
+    simulator_tvp_template['last_state'] = tvp.x
+    simulator_tvp_template['last_input'] = tvp.u
+    simulator_tvp_template['last_acc'] = tvp.drone_accel
+
+
+    return simulator_tvp_template
+
+simulator.set_tvp_fun(simulator_tvp_fun)
+
+
+params_simulator = {
+    # Note: cvode doesn't support DAE systems.
+    'integration_tool': 'idas',
+    'abstol': 1e-8,
+    'reltol': 1e-8,
+    't_step': 0.04
 }
 
-mpc_controller.set_param(**setup_mpc)
+simulator.set_param(**params_simulator)
 
-mterm = mpc_model.aux['diff'] # terminal cost
-lterm = mpc_model.aux['diff'] # stage cost
+simulator.setup()
 
-mpc_controller.set_objective(mterm=mterm, lterm=lterm)
-# Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=0.1)
-mpc_controller.set_rterm(u_ti=0.01)
+estimator = do_mpc.estimator.StateFeedback(mpc_model)
 
-tilt_limit = pi/(2.2)
-thrust_limit = 30
-u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
-u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
-u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
-u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
+x0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+u0sim = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+sim_acc = np.array([0.0,0.0,0.0,0.0,0.0,0.0]).T
+simulator.x0 = x0sim
+estimator.x0 = x0sim
 
+simulator.u0 = u0sim
+simulator.z0 = sim_acc
 
-mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
-mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
-mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
-mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
+estimator.u0 = u0sim
+estimator.z0 = sim_acc
 
-
-x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
-u0 = np.array([m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]).T
-#u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
-
-drone_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-mpc_controller.x0 = x0
-mpc_controller.u0 = u0
-mpc_controller.z0 = drone_acceleration
+global_simulator.sim = simulator
+global_simulator.est = estimator
 
 
 
-controller_tvp_template = mpc_controller.get_tvp_template()
-def controller_tvp_fun(t_now):
-    for k in range(n_horizon+1):
-        controller_tvp_template['_tvp',k,'last_state'] = tvp.x
-        controller_tvp_template['_tvp',k,'last_input'] = tvp.u
-        controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
 
 
-        return controller_tvp_template
-mpc_controller.set_tvp_fun(controller_tvp_fun)
-mpc_controller.setup()
 
-mpc_global_controller.controller = mpc_controller
 
