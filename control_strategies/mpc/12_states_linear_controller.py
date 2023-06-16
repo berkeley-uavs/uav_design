@@ -113,6 +113,7 @@ ddtheta = mpc_model.set_variable('_z',  'ddtheta', (3, 1))
 last_state = mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
 last_input = mpc_model.set_variable(var_type='_tvp', var_name='last_input',shape=(8, 1))
 last_acc = mpc_model.set_variable(var_type='_tvp', var_name='last_acc',shape=(6, 1))
+target_velocity = mpc_model.set_variable(var_type='_tvp', var_name='target_velocity', shape=(3, 1))
 
 # Continuous variables -xyz pos, dx dy dz, and euler roll pitch yaw are spatial, while droll, dpitch, dyaw are body rates
 
@@ -303,17 +304,12 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 
-
-
-
-
-
 #-----------------------Model Parameters----------
-targetvel = np.array([[0.08],[0.0],[.05]])
+# targetvel = target_velocity
 
-diff = ((dpos[0]-targetvel[0])**2 + 
-        (dpos[1]-targetvel[1])**2 + 
-        (dpos[2]-targetvel[2])**2)
+diff = ((dpos[0]-target_velocity[0])**2 + 
+        (dpos[1]-target_velocity[1])**2 + 
+        (dpos[2]-target_velocity[2])**2)
 
 mpc_model.set_expression('diff', diff)
 
@@ -377,6 +373,7 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
+        controller_tvp_template['_tvp',k,'target_velocity'] = tvp.target_velocity
 
 
         return controller_tvp_template

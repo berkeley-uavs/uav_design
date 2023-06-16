@@ -30,6 +30,8 @@ curr_roll = 0.0
 curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
+desired_velocities = np.array([[0.01, 0.0, 0.0], [0.2, 0.0, 0.0], [0.2, 0.2, 0.0]])
+
 
 # print("u")
 # print(tvp.u)
@@ -41,35 +43,37 @@ last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 # print(tvp.drone_accel)
 # print("\n")
 
+for target_vel in desired_velocities:
+    tvp.target_velocity = target_vel
+    for i in range(40):
+        start = time.time()
+        
+        u0 = mpc_controller.make_step(x0)
 
-for i in range(40):
-    start = time.time()
-    
-    u0 = mpc_controller.make_step(x0)
-
-    end = time.time()
-    print("Computation time: ", end-start)
-     
-    ynext= simulator.make_step(u0)
-    x0 = estimator.make_step(ynext)
-    print("sim")
-    # sim is pos, theta, dpos, dtheta
-    # controller is dpos, dtheta, theta, pos 
-    drone_acceleration = (np.array(x0[6:12]) - last_x0_dot )/dt
-    tvp.x = x0
-    tvp.u = u0
-    tvp.drone_accel = drone_acceleration
-    
-    print("u")
-    print(u0)
-    print("\n")
-    print("x")
-    print(x0)
-    # print("\n")
-    # print("a")
-    # print(drone_acceleration)
-    print(i)
-    last_x0_dot = np.array(x0[6:12])
+        end = time.time()
+        print("Computation time: ", end-start)
+        
+        ynext= simulator.make_step(u0)
+        x0 = estimator.make_step(ynext)
+        print("sim")
+        # sim is pos, theta, dpos, dtheta
+        # controller is dpos, dtheta, theta, pos 
+        drone_acceleration = (np.array(x0[6:12]) - last_x0_dot )/dt
+        tvp.x = x0
+        tvp.u = u0
+        tvp.drone_accel = drone_acceleration
+        print("target velocity is ", tvp.target_velocity)
+        
+        # print("u")
+        # print(u0)
+        # print("\n")
+        # print("x")
+        # print(x0)
+        # print("\n")
+        # print("a")
+        # print(drone_acceleration)
+        print(i)
+        last_x0_dot = np.array(x0[6:12])
 
 fig, ax = plt.subplots()
 
