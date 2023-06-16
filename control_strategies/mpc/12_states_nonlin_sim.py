@@ -23,14 +23,6 @@ mpc_modelsim = do_mpc.model.Model(model_type)
 u = None
 x = None
 
-#second order taylor series approx of sin
-def sinTE(x):
-    return x - ((x)**3)/6
-    #return sin(x)
-def cosTE(x):
-    return 1 -(x**2)/2
-    #return cos(x)
-
 def rotBE(r,p,y):    
     rotBErow1 = horzcat(
                             (cos(y)*cos(p)), 
@@ -57,17 +49,17 @@ def rotEB(r,p,y):
 def f_acc(T1, T2, T3, T4, tilt1, tilt2, tilt3, tilt4,droll, dpitch,dyaw, euler_roll, euler_pitch, euler_yaw ):
     f_acc = vertcat(
 
-    (T2*sinTE(tilt2) - T4*sinTE(tilt4) - m*g*sin(euler_pitch))/m, # 1
+    (T2*sin(tilt2) - T4*sin(tilt4) - m*g*sin(euler_pitch))/m, # 1
     
-    (T1*sinTE(tilt1) - T3*sinTE(tilt3) - m*g*sin(euler_roll))/m, # 2
+    (T1*sin(tilt1) - T3*sin(tilt3) - m*g*sin(euler_roll))/m, # 2
     
-    (T1*cosTE(tilt1) + T2*cosTE(tilt2) + T3*cosTE(tilt3) + T4*cosTE(tilt4) - m*g*cos(euler_roll)*cos(euler_pitch))/m, # 3
+    (T1*cos(tilt1) + T2*cos(tilt2) + T3*cos(tilt3) + T4*cos(tilt4) - m*g*cos(euler_roll)*cos(euler_pitch))/m, # 3
     
-    ((T2*cosTE(tilt2)*arm_length) - (T4*cosTE(tilt4)*arm_length) + (Iyy*dpitch*dyaw + Izz*dpitch*dyaw))/Ixx, # 4    
+    ((T2*cos(tilt2)*arm_length) - (T4*cos(tilt4)*arm_length) + (Iyy*dpitch*dyaw + Izz*dpitch*dyaw))/Ixx, # 4    
     
-    (T1*cosTE(tilt1)*arm_length - T3*cosTE(tilt3)*arm_length + (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy, # 5
+    (T1*cos(tilt1)*arm_length - T3*cos(tilt3)*arm_length + (-Ixx*droll*dyaw + Izz*droll*dyaw))/Iyy, # 5
     
-    (T1*sinTE(tilt1)*arm_length + T2*sinTE(tilt2)*arm_length + T3*sinTE(tilt3)*arm_length + T4*sinTE(tilt4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz) # 6)
+    (T1*sin(tilt1)*arm_length + T2*sin(tilt2)*arm_length + T3*sin(tilt3)*arm_length + T4*sin(tilt4)*arm_length + (Ixx*droll*dpitch - Iyy*droll*dpitch))/Izz) # 6)
     return f_acc
 #T_dot and T are for finding euler angle angular accelerations 
 
@@ -179,7 +171,7 @@ dyaw_euler_cont = w_euler_cont[2]
 
 v_b_cont = vertcat(dx_cont,dy_cont,dz_cont)#dx,dy,dz
 alpha_b_cont = vertcat(ddroll_cont, ddpitch_cont, ddyaw_cont)
-r_b_tvp = vertcat(xpos_cont, ypos_cont, zpos_cont)#pos
+r_b_cont = vertcat(xpos_cont, ypos_cont, zpos_cont)#pos
 
 
 
@@ -189,10 +181,14 @@ T_dot_cont = T_dot(droll_euler_cont, dpitch_euler_cont, dyaw_euler_cont,euler_ro
 alpha_euler_cont = T_cont@alpha_b_cont + T_dot_cont@vertcat(droll_cont, dpitch_cont, dyaw_cont)
 rotEBMatrix_cont = rotEB(euler_roll_cont, euler_pitch_cont, euler_yaw_cont)
 
-fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
+# UNCOMMENT FOR No relative acceleration
+# fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
+
+# UNCOMMENT FOR Relative acceleration
+fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])) + 2 * skew(w_euler_cont)@v_b_cont + skew(alpha_euler_cont)@r_b_cont + skew(w_euler_cont)@(skew(w_euler_cont)@r_b_cont))
+
 fspatial_rotation_acc_cont = vertcat(f_bodyacc_cont[3:6]) 
 fspatial_acc_cont = vertcat(fspatial_linear_acc_cont, fspatial_rotation_acc_cont)
-
 
 
 euler_lagrange = vertcat(ddx_cont, ddy_cont, ddz_cont, ddroll_cont, ddpitch_cont, ddyaw_cont) - fspatial_acc_cont
