@@ -31,10 +31,14 @@ last_x0_dot_lin = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
 difference_list = []
 
-for i in range(4):
+n = 40
+# This represents one step of the MPC. Aka, if the MPC horizon was n steps
+# This is technically open loop because there is no state feedback over one MPC step
+
+for i in range(n):
     start = time.time()
     
-    u0 = np.array([30, 10, 50, 20, 0.2, 0.3, 0.2, 0.3]).reshape(8, 1)
+    u0 = np.array([3, 1, 5, 2, 0.2, 0.3, 0.2, 0.3]).reshape(8, 1)
 
     end = time.time()
     print("Computation time: ", end-start)
@@ -70,3 +74,19 @@ print("x nonlinear")
 print(x0_nonlin)
 
 print(difference_list)
+
+fig, ax = plt.subplots()
+
+t = np.arange(n)
+
+
+# Plot the data
+ax.plot(t, difference_list, label='norm_2(linear, nonlinear) controller')
+ax.set_xlabel("iterations")
+ax.set_ylabel("L2 norm of the difference between the states of the linear and non linear controller")
+
+# Add a legend to the plot
+ax.legend()
+
+# Display the plot
+plt.show()
