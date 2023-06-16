@@ -31,10 +31,10 @@ last_x0_dot_lin = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
 difference_list = []
 
-for i in range(20):
+for i in range(4):
     start = time.time()
     
-    u0 = np.array([20, 20, 20, 20, 0.2, 0.3, 0.4, 0.5]).reshape(8, 1)
+    u0 = np.array([30, 10, 50, 20, 0.2, 0.3, 0.2, 0.3]).reshape(8, 1)
 
     end = time.time()
     print("Computation time: ", end-start)
@@ -55,7 +55,7 @@ for i in range(20):
     # print("\n")
     # print("a")
     # print(drone_acceleration)
-    diff = norm_2(x0_lin - x0_nonlin)
+    diff = norm_2(x0_lin -x0_nonlin)
     # print(diff)
     difference_list.append(diff)
     print(i)
@@ -64,9 +64,9 @@ for i in range(20):
 # print("u")
 # print(u0)
 # print("\n")
-# print("x linear")
-# print(x0_lin)
-# print("x nonlinear")
-# print(x0_nonlin)
+print("x linear")
+print(x0_lin)
+print("x nonlinear")
+print(x0_nonlin)
 
 print(difference_list)

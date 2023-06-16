@@ -23,11 +23,12 @@ x = None
 
 #second order taylor series approx of sin
 def sinTE(x):
-    return x - ((x)**3)/6
+    return x - ((x)**3)/6 + ((x)**5)/120
     #return sinTE(x)
 def cosTE(x):
-    return 1 -(x**2)/2
+    return 1 -(x**2)/2 + ((x)**4)/24
     #return cosTE(x)
+
 
 def rotBE(r,p,y):    
     rotBErow1 = horzcat(
