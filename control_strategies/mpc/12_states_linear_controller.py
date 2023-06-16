@@ -309,7 +309,7 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 #-----------------------Model Parameters----------
-targetvel = np.array([[0.2],[0.3],[0.1]])
+targetvel = np.array([[0.08],[0.0],[.05]])
 
 diff = ((dpos[0]-targetvel[0])**2 + 
         (dpos[1]-targetvel[1])**2 + 
