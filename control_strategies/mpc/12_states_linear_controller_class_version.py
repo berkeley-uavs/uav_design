@@ -16,9 +16,22 @@ Ixx = 1.0
 Iyy = 1.0
 Izz = 1.0
 
+class Linear_Model:
+    def __init__(self) -> None:
+        self.model_type = "continuous"
+        self.mpc_model = do_mpc.model.Model(self.model_type)
 
-model_type = "continuous"
-mpc_model = do_mpc.model.Model(model_type)
+    def set_states(self):
+        # STATES
+        #dtheta is in terms of BODY ANGULAR VELOCITIES, while euler_ang is in terms of SPATIAL EULER ANGLES
+        pos = self.mpc_model.set_variable('_x',  'pos', (3, 1))
+        euler_ang = self.mpc_model.set_variable('_x',  'euler_ang', (3, 1))
+        dpos = self.mpc_model.set_variable('_x',  'dpos', (3, 1))
+        dtheta = self.mpc_model.set_variable('_x',  'dtheta', (3, 1))
+
+        return (pos, euler_ang, dpos, dtheta)
+
+
 mpc_controller = None
 u = None
 x = None
@@ -93,12 +106,7 @@ def T(euler_roll, euler_pitch, euler_yaw):
     horzcat(0,cosTE(euler_roll), - sinTE(euler_roll)),
     horzcat(0, sinTE(euler_roll)/cosTE(euler_pitch), cosTE(euler_roll)/cosTE(euler_pitch)))
     return T
-# STATES
-#dtheta is in terms of BODY ANGULAR VELOCITIES, while euler_ang is in terms of SPATIAL EULER ANGLES
-pos = mpc_model.set_variable('_x',  'pos', (3, 1))
-euler_ang = mpc_model.set_variable('_x',  'euler_ang', (3, 1))
-dpos = mpc_model.set_variable('_x',  'dpos', (3, 1))
-dtheta = mpc_model.set_variable('_x',  'dtheta', (3, 1))
+
 # INPUTS
 u_th = mpc_model.set_variable('_u',  'u_th', (4, 1))
 u_ti = mpc_model.set_variable('_u',  'u_ti', (4, 1))

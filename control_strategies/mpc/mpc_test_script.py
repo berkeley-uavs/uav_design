@@ -10,7 +10,6 @@ from global_vars_mpc import global_simulator
 from global_vars_mpc import mpc_global_controller
 
 
-
 with open("control_strategies/mpc/12_states_linear_controller.py") as f:
     exec(f.read())
 
@@ -62,6 +61,7 @@ for target_vel in desired_velocities:
         tvp.x = x0
         tvp.u = u0
         tvp.drone_accel = drone_acceleration
+        tvp.target_velocity = [0.3, 0.0, 0.0]
         print("target velocity is ", tvp.target_velocity)
         
         # print("u")
