@@ -1,12 +1,7 @@
 import numpy as np
 import do_mpc
 from casadi import *
-import math
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import time
 from global_vars_mpc import tvp
-from global_vars_mpc import mpc_global_controller
 from utils import *
 
 
@@ -17,8 +12,12 @@ Ixx = 1.0
 Iyy = 1.0
 Izz = 1.0
 
-class Linear_Model:
-    def __init__(self) -> None:
+# -------------------------------MODEL----------------------------------------
+
+
+class MPC_Model:
+    def __init__(self, is_linear) -> None:
+        self.is_linear = is_linear
         self.model_type = "continuous"
         self.mpc_model = do_mpc.model.Model(self.model_type)
 
@@ -64,6 +63,20 @@ class Linear_Model:
         self.tilt3_cont = self.u_ti[2]
         self.tilt4_cont = self.u_ti[3]
 
+        self.euler_ang_vel_cont = vertcat(
+                    (self.droll_cont + 
+                    self.dyaw_cont*cosTE(self.euler_roll_cont)*tan(self.euler_pitch_cont) + 
+                    self.dpitch_cont*sinTE(self.euler_roll_cont)*tan(self.euler_pitch_cont)),
+
+                    (self.dpitch_cont*cosTE(self.euler_roll_cont) - 
+                    self.dyaw_cont*sinTE(self.euler_roll_cont)),
+
+                    ((self.dyaw_cont*cosTE(self.euler_roll_cont)/(cosTE(self.euler_pitch_cont))) + 
+                    self.dpitch_cont*(sinTE(self.euler_roll_cont)/cosTE(self.euler_pitch_cont)))
+                    )
+
+        self.set_rhs()
+
         self.u_vec_cont = vertcat(
             self.u_th,
             self.u_ti
@@ -76,9 +89,15 @@ class Linear_Model:
         )
         self.result_vec_cont = vertcat(self.ddx_cont, self.ddy_cont, self.ddz_cont, self.ddroll_cont, self.ddpitch_cont, self.ddyaw_cont)
 
-        self.euler_lagrange = self.linearise()
-        self.mpc_model.set_alg('euler_lagrange', self.euler_lagrange)
+        if is_linear:
+            self.euler_lagrange = self.linearise()
+        else:
+            self.euler_lagrange = self.result_vec_cont - self.find_continous_f_spatial_accel()
 
+        self.setup_model()
+        self.mpc_model.setup()
+
+    # Called by default upon intialisation
     def init_states(self):
         # STATES
         #dtheta is in terms of BODY ANGULAR VELOCITIES, while euler_ang is in terms of SPATIAL EULER ANGLES
@@ -88,7 +107,8 @@ class Linear_Model:
         dtheta = self.mpc_model.set_variable('_x',  'dtheta', (3, 1))
 
         return (pos, euler_ang, dpos, dtheta)
-    
+
+    # Called by default upon intialisation  
     def init_inputs(self):
         # INPUTS
         u_th = self.mpc_model.set_variable('_u',  'u_th', (4, 1))
@@ -96,6 +116,7 @@ class Linear_Model:
 
         return (u_th, u_ti)
     
+    # Called by default upon intialisation
     def init_algebraic_terms(self):
         # ALGEBRAIC TERMS
         ddpos = self.mpc_model.set_variable('_z',  'ddpos', (3, 1))
@@ -103,6 +124,7 @@ class Linear_Model:
 
         return (ddpos, ddtheta)
     
+    # Called by default upon intialisation
     def init_tvp(self):
         #TIME VARYING PARAMETERS
         last_state = self.mpc_model.set_variable(var_type='_tvp', var_name='last_state',shape=(12, 1))
@@ -112,31 +134,22 @@ class Linear_Model:
 
         return (last_state, last_input, last_acc, target_velocity)
     
+    # Called by default upon intialisation
     def set_rhs(self):
         self.mpc_model.set_rhs('pos', self.dpos)
         self.mpc_model.set_rhs('dpos', self.ddpos)
         self.mpc_model.set_rhs('euler_ang', self.euler_ang_vel_cont)
         self.mpc_model.set_rhs('dtheta', self.ddtheta)
 
+    # Called by default upon intialisation for Non Linear Models
     def find_continous_f_spatial_accel(self):
-        euler_ang_vel_cont = vertcat(
-                            (self.droll_cont + 
-                            self.dyaw_cont*cosTE(self.euler_roll_cont)*tan(self.euler_pitch_cont) + 
-                            self.dpitch_cont*sinTE(self.euler_roll_cont)*tan(self.euler_pitch_cont)),
-
-                            (self.dpitch_cont*cosTE(self.euler_roll_cont) - 
-                            self.dyaw_cont*sinTE(self.euler_roll_cont)),
-
-                            ((self.dyaw_cont*cosTE(self.euler_roll_cont)/(cosTE(self.euler_pitch_cont))) + 
-                            self.dpitch_cont*(sinTE(self.euler_roll_cont)/cosTE(self.euler_pitch_cont)))
-                            )
 
         f_bodyacc_cont = f_acc(self.T1_cont, self.T2_cont,self.T3_cont, self.T4_cont, 
                                self.tilt1_cont, self.tilt2_cont, self.tilt4_cont, 
                                self.droll_cont, self.dpitch_cont, self.dyaw_cont, 
                                self.euler_roll_cont, self.euler_pitch_cont, self.euler_yaw_cont)
 
-        w_euler_cont = vertcat(euler_ang_vel_cont)
+        w_euler_cont = vertcat(self.euler_ang_vel_cont)
         droll_euler_cont = w_euler_cont[0] 
         dpitch_euler_cont = w_euler_cont[1]
         dyaw_euler_cont = w_euler_cont[2]
@@ -158,6 +171,7 @@ class Linear_Model:
 
         return fspatial_acc_cont
     
+    # Called in linearise() upon intialisation of Linear Models
     def find_tvp_f_spatial_accel(self):
         # TVP   - xyz pos, dx dy dz, and euler roll pitch yaw are spatial, while droll, dpitch, dyaw are body rates
         #states
@@ -232,6 +246,7 @@ class Linear_Model:
 
         return fspatial_acc_tvp
 
+    # Called by default upon intialisation for Linear Models
     def linearise(self):
         fspatial_acc_tvp = self.find_tvp_f_spatial_accel()
         A = jacobian(self.last_acc - fspatial_acc_tvp, self.last_state)
@@ -249,89 +264,211 @@ class Linear_Model:
 
         return euler_lagrange
     
+    # Called by default upon intialisation
     def setup_model(self):
-
-
-mpc_controller = None
-u = None
-x = None
-
-
-
-#-----------------------Model Parameters----------
-targetvel = target_velocity
-
-diff = ((dpos[0]-target_velocity[0])**2 + 
-        (dpos[1]-target_velocity[1])**2 + 
-        (dpos[2]-target_velocity[2])**2)
-
-mpc_model.set_expression('diff', diff)
-
-mpc_model.setup()
-
-mpc_controller = do_mpc.controller.MPC(mpc_model)
-n_horizon = 4
-
-setup_mpc = {
-    'n_horizon': n_horizon,
-    'n_robust': 0,
-    'open_loop': 0,
-    't_step': 0.04,
-    'state_discretization': 'collocation',
-    'collocation_type': 'radau',
-    'collocation_deg': 3,
-    'collocation_ni': 1,
-    'store_full_solution': True,
-    # Use MA27 linear solver in ipopt for faster calculations:
-    'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0}
-}
-
-mpc_controller.set_param(**setup_mpc)
-
-mterm = mpc_model.aux['diff'] # terminal cost
-lterm = mpc_model.aux['diff'] # stage cost
-
-mpc_controller.set_objective(mterm=mterm, lterm=lterm)
-# Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=0.1)
-mpc_controller.set_rterm(u_ti=0.01)
-
-tilt_limit = pi/(2.2)
-thrust_limit = 30
-u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
-u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
-u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
-u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
-
-
-mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
-mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
-mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
-mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
-
-
-x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
-u0 = np.array([m*g/4,m*g/4,m*g/4,m*g/4,0.0,0.0,0.0,0.0]).T
-#u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0])
-
-drone_acceleration = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
-mpc_controller.x0 = x0
-mpc_controller.u0 = u0
-mpc_controller.z0 = drone_acceleration
+        print("Enters setup_model")
+        self.mpc_model.set_alg('euler_lagrange', self.euler_lagrange)
+        # self.mpc_model.setup()
 
 
 
-controller_tvp_template = mpc_controller.get_tvp_template()
-def controller_tvp_fun(t_now):
-    for k in range(n_horizon+1):
-        controller_tvp_template['_tvp',k,'last_state'] = tvp.x
-        controller_tvp_template['_tvp',k,'last_input'] = tvp.u
-        controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
-        controller_tvp_template['_tvp',k,'target_velocity'] = tvp.target_velocity
 
-        return controller_tvp_template
-mpc_controller.set_tvp_fun(controller_tvp_fun)
-mpc_controller.setup()
+# -------------------------------CONTROLLER----------------------------------------
 
-mpc_global_controller.controller = mpc_controller
+
+
+
+
+class MPC_Controller:
+    def __init__(self, model):
+        self.model = model
+        self.controller = do_mpc.controller.MPC(self.model)
+        self.n_horizon = 4
+
+        self.x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.z0 = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]]).T
+
+        self.set_parameters()
+        self.set_obj_func()
+        self.setup_tvp_controller()
+        self.setup_controller()
+
+    # Called by default upon intialisation
+    def set_parameters(self):
+        setup_mpc = {
+            'n_horizon': self.n_horizon,
+            'n_robust': 0,
+            'open_loop': 0,
+            't_step': 0.04,
+            'state_discretization': 'collocation',
+            'collocation_type': 'radau',
+            'collocation_deg': 3,
+            'collocation_ni': 1,
+            'store_full_solution': True,
+            # Use MA27 linear solver in ipopt for faster calculations:
+            'nlpsol_opts': {'ipopt.linear_solver': 'mumps', 'ipopt.print_level':0}
+        }
+
+        self.controller.set_param(**setup_mpc)
+
+    # Called by default upon intialisation
+    def set_obj_func(self):
+        mterm = ((self.model.dx_cont - self.model.target_velocity[0])**2 + (self.model.dy_cont - self.model.target_velocity[1])**2 + (self.model.dz_cont - self.model.target_velocity[2])**2) # terminal cost
+
+        lterm = ((self.model.dx_cont - self.model.target_velocity[0])**2 + (self.model.dy_cont - self.model.target_velocity[1])**2 + (self.model.dz_cont - self.model.target_velocity[2])**2) # stage cost
+
+        self.controller.set_objective(mterm=mterm, lterm=lterm)
+        # Input force is implicitly restricted through the objective.
+        self.controller.set_rterm(u_th=0.1)
+        self.controller.set_rterm(u_ti=0.01)
+
+    # Called in main script
+    def set_bounds(self, tilt_limit, thrust_limit):
+        u_th_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limit])
+        u_th_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
+        u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
+        u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
+
+        # return (u_th_upper_limits, u_th_lower_limits, u_ti_upper_limits, u_ti_lower_limits)
+        self.controller.bounds['lower','_u','u_th'] = u_th_upper_limits
+        self.controller.bounds['upper','_u','u_th'] = u_th_lower_limits
+        self.controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
+        self.controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
+
+    # Called in main script
+    # X0 is a horizontal array
+    def set_current_state(self, x0):
+        self.x0 = x0.T
+        self.controller.x0 = self.x0
+
+    # Called in main script
+    # U0 is a horizontal array
+    def set_current_input(self, u0):
+        self.u0 = u0.T
+        self.controller.u0 = self.u0
+
+    # Called in main script
+    # Z0 is a horizontal array   
+    def set_current_algebraic(self, z0):
+        self.z0 = z0.T
+        self.controller.z0 = self.z0
+    
+    def setup_tvp_controller(self):
+        def controller_tvp_fun(self, t_now):
+            controller_tvp_template = self.controller.get_tvp_template()
+            for k in range(self.n_horizon + 1):
+                controller_tvp_template['_tvp',k,'last_state'] = tvp.x
+                controller_tvp_template['_tvp',k,'last_input'] = tvp.u
+                controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
+                controller_tvp_template['_tvp',k,'target_velocity'] = tvp.target_velocity
+            return controller_tvp_template
+        self.controller.set_tvp_fun(controller_tvp_fun)
+
+    # Called by default upon intialisation
+    def setup_controller(self):
+        self.controller.setup()
+
+    # Call from main script
+    def initial_guess(self):
+        self.controller.set_initial_guess()
+
+
+
+# -------------------------------SIMULATOR----------------------------------------
+
+
+
+
+class MPC_Simulator:
+    def __init__(self, model):
+        self.model = model
+        self.simulator = do_mpc.simulator.Simulator(self.model)
+        self.set_parameters()
+        self.x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.z0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0]).T
+
+        self.setup_simulator()
+
+    # Called by default upon intialisation
+    def set_parameters(self):
+        params_simulator = {
+            # Note: cvode doesn't support DAE systems.
+            'integration_tool': 'idas',
+            'abstol': 1e-8,
+            'reltol': 1e-8,
+            't_step': 0.04
+        }
+
+        self.simulator.set_param(**params_simulator)
+
+    # Called by default upon intialisation
+    def setup_simulator(self):
+        self.simulator.setup()
+
+    # Called in main script
+    # X0 is a horizontal array
+    def set_current_state(self, x0):
+        self.x0 = x0.T
+        self.simulator.x0 = self.x0
+
+    # Called in main script
+    # U0 is a horizontal array
+    def set_current_input(self, u0):
+        self.u0 = u0.T
+        self.simulator.u0 = self.u0
+
+    # Called in main script
+    # Z0 is a horizontal array   
+    def set_current_algebraic(self, z0):
+        self.z0 = z0.T
+        self.simulator.z0 = self.z0
+
+    # Call from main script
+    def initial_guess(self):
+        self.simulator.set_initial_guess()
+
+
+
+
+# -------------------------------ESTIMATOR----------------------------------------
+
+
+
+
+
+class MPC_Estimator:
+    def __init__(self, model):
+        self.model = model
+        self.estimator = do_mpc.estimator.StateFeedback(self.model)
+        self.x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.u0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T
+        self.z0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0]).T
+
+    # Called in main script
+    # X0 is a horizontal array
+    def set_current_state(self, x0):
+        self.x0 = x0.T
+        self.estimator.x0 = self.x0
+
+    # Called in main script
+    # U0 is a horizontal array
+    def set_current_input(self, u0):
+        self.u0 = u0.T
+        self.estimator.u0 = self.u0
+
+    # Called in main script
+    # Z0 is a horizontal array   
+    def set_current_algebraic(self, z0):
+        self.z0 = z0.T
+        self.estimator.z0 = self.z0
+    
+
+class TVPData:
+    def __init__(self, x, u, drone_accel, target_velocity):
+        self.x = x
+        self.u = u
+        self.drone_accel = drone_accel
+        self.target_velocity = target_velocity
 
