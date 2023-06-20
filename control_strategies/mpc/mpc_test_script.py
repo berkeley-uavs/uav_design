@@ -29,7 +29,7 @@ curr_roll = 0.0
 curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
-desired_velocities = np.array([[0.01, 0.0, 0.0], [0.2, 0.0, 0.0], [0.2, 0.2, 0.0]])
+desired_velocities = np.array([[0.0, 0.0, 0.2],[0.0, 0.0, 0.0],[0.2, 0.0, 0.0],[0.5, 0.0, 0.0],[0.1, 0.0, 0.0],[0.0, -0.1, 0.0], [0.0,-0.5,0.0], [0.0,-0.1,0.0],[0.1,0.0,0.0], [0.5,0.0,0.0]  ])
 
 
 # print("u")
@@ -44,7 +44,7 @@ desired_velocities = np.array([[0.01, 0.0, 0.0], [0.2, 0.0, 0.0], [0.2, 0.2, 0.0
 
 for target_vel in desired_velocities:
     tvp.target_velocity = target_vel
-    for i in range(40):
+    for i in range(20):
         start = time.time()
         
         u0 = mpc_controller.make_step(x0)
@@ -61,11 +61,11 @@ for target_vel in desired_velocities:
         tvp.x = x0
         tvp.u = u0
         tvp.drone_accel = drone_acceleration
-        tvp.target_velocity = [0.3, 0.0, 0.0]
+        #tvp.target_velocity = [0.3, 0.0, 0.0]
         print("target velocity is ", tvp.target_velocity)
         
-        # print("u")
-        # print(u0)
+        print("u")
+        print(u0)
         # print("\n")
         # print("x")
         # print(x0)
@@ -86,6 +86,10 @@ roll_graph = mpc_controller.data['_x'][:, 3]
 pitch_graph = mpc_controller.data['_x'][:,4]
 yaw_graph = mpc_controller.data['_x'][:, 5]
 
+til1 =mpc_controller.data['_u'][:, 4]
+til2 = mpc_controller.data['_u'][:, 5] 
+til3 = mpc_controller.data['_u'][:, 6]
+til4 = mpc_controller.data['_u'][:, 7]
 
 # Plot the data
 ax.plot(t, x_vel, label='xv')
@@ -94,6 +98,12 @@ ax.plot(t, z_vel, label='zv')
 ax.plot(t, roll_graph, label='r')
 ax.plot(t, pitch_graph, label='p')
 ax.plot(t, yaw_graph, label='yaw')
+
+# ax.plot(t, til1, label='til1')
+# ax.plot(t, til2, label='til2')
+# ax.plot(t, til3, label='til3')
+# ax.plot(t, til4, label='til4')
+
 
 # Add a legend to the plot
 ax.legend()

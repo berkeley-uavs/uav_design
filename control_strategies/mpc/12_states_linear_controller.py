@@ -27,6 +27,7 @@ x = None
 def sinTE(x):
     return x - ((x)**3)/6 #+ ((x)**5)/120
     #return sinTE(x)
+
 def cosTE(x):
     return 1 -(x**2)/2 #+ ((x)**4)/24
     #return cosTE(x)
@@ -303,14 +304,6 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 #-----------------------Model Parameters----------
-targetvel = target_velocity
-
-diff = ((dpos[0]-target_velocity[0])**2 + 
-        (dpos[1]-target_velocity[1])**2 + 
-        (dpos[2]-target_velocity[2])**2)
-
-mpc_model.set_expression('diff', diff)
-
 mpc_model.setup()
 
 mpc_controller = do_mpc.controller.MPC(mpc_model)
@@ -331,9 +324,10 @@ setup_mpc = {
 }
 
 mpc_controller.set_param(**setup_mpc)
-
-mterm = mpc_model.aux['diff'] # terminal cost
-lterm = mpc_model.aux['diff'] # stage cost
+mterm =((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)
+# terminal cost
+lterm = ((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)
+# stage cost
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
@@ -372,8 +366,7 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
         controller_tvp_template['_tvp',k,'target_velocity'] = tvp.target_velocity
-
-        return controller_tvp_template
+    return controller_tvp_template
 mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
 

@@ -1,6 +1,6 @@
 <mujoco model="Quadrotor">
   <compiler inertiafromgeom="true" coordinate="local"/>
-  <option timestep="0.01" gravity="0 0 -9.81" wind="0 0 0" density="1.225" viscosity="1.48e-5" />
+  <option timestep="0.04" gravity="0 0 -9.81" wind="0 0 0" density="1.225" viscosity="1.48e-5" />
 
   <asset>
     <texture name="blue_grid" type="2d" builtin="checker" rgb1=".02 .14 .44" rgb2=".27 .55 1" width="300" height="300" mark="edge" markrgb="1 1 1"/>
@@ -42,7 +42,7 @@
 
     <body name="quadrotor" pos="0 0 0.1">
       <body name="core" pos="0 0 0" quat = ".924 0.0 0.0 0.383">
-        <geom type="box" size="0.06 0.035 0.025"  rgba="0.3 0.3 0.8 1" mass = ".2"/>
+        <geom type="box" size="0.06 0.035 0.025"  rgba="0.3 0.3 0.8 1" mass = "1.9"/>
         <site name="body" type="box" />
       </body> 
 

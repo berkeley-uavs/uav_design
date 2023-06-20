@@ -314,7 +314,7 @@ mpc_model.set_alg('euler_lagrange', euler_lagrange)
 
 
 #-----------------------Model Parameters----------
-targetvel = np.array([[0.8],[0.0],[0.1]])
+targetvel = np.array([[0.0],[0.0],[0.5]])
 
 diff = ((dpos[0]-targetvel[0])**2 + 
         (dpos[1]-targetvel[1])**2 + 
@@ -382,9 +382,7 @@ def controller_tvp_fun(t_now):
         controller_tvp_template['_tvp',k,'last_state'] = tvp.x
         controller_tvp_template['_tvp',k,'last_input'] = tvp.u
         controller_tvp_template['_tvp',k,'last_acc'] = tvp.drone_accel
-
-
-        return controller_tvp_template
+    return controller_tvp_template
 mpc_controller.set_tvp_fun(controller_tvp_fun)
 mpc_controller.setup()
 
