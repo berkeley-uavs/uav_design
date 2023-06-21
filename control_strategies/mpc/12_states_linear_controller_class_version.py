@@ -17,7 +17,7 @@ Ixx = 1.0
 Iyy = 1.0
 Izz = 1.0
 
-class NonLinear_Model:
+class Linear_Model:
     def __init__(self) -> None:
         self.model_type = "continuous"
         self.mpc_model = do_mpc.model.Model(self.model_type)
@@ -77,6 +77,7 @@ class NonLinear_Model:
         self.result_vec_cont = vertcat(self.ddx_cont, self.ddy_cont, self.ddz_cont, self.ddroll_cont, self.ddpitch_cont, self.ddyaw_cont)
 
         self.euler_lagrange = self.linearise()
+        self.result_vec_cont - self.find_continous_f_spatial_accel
         self.mpc_model.set_alg('euler_lagrange', self.euler_lagrange)
 
     def init_states(self):

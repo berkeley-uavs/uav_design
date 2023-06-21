@@ -9,12 +9,17 @@ from global_vars_mpc import tvp
 from global_vars_mpc import mpc_global_controller
 
 
-m = 2.0  # drone_mass
+
 g = 9.81
 arm_length = .2212
-Ixx = 1.0
-Iyy = 1.0
-Izz = 1.0
+# m = 2.0 # drone_mass
+# Ixx = 1.
+# Iyy = 1.
+# Izz = 1.
+m= .66
+Ixx = .00750
+Iyy = .00750
+Izz = .013
 
 
 model_type = "continuous"
@@ -31,6 +36,9 @@ def sinTE(x):
 def cosTE(x):
     return 1 -(x**2)/2 #+ ((x)**4)/24
     #return cosTE(x)
+
+def tanTE(x):
+    return x + (x**3)/3
 
 def rotBE(r,p,y):    
     rotBErow1 = horzcat(
@@ -75,22 +83,22 @@ def f_acc(T1, T2, T3, T4, tilt1, tilt2, tilt3, tilt4,droll, dpitch,dyaw, euler_r
 def T_dot(euler_roll, euler_pitch, euler_yaw, droll_euler, dpitch_euler, dyaw_euler):
     T_dot = vertcat(
         horzcat(0,      
-            (cosTE(euler_roll)*droll_euler*tan(euler_pitch) + dpitch_euler*sinTE(euler_roll)*1/cosTE(euler_pitch)**2),
-            (-sinTE(euler_roll)*droll_euler*tan(euler_pitch) + dpitch_euler*cosTE(euler_roll)*1/cosTE(euler_pitch)**2)),
+            (cosTE(euler_roll)*droll_euler*tanTE(euler_pitch) + dpitch_euler*sinTE(euler_roll)*1/cosTE(euler_pitch)**2),
+            (-sinTE(euler_roll)*droll_euler*tanTE(euler_pitch) + dpitch_euler*cosTE(euler_roll)*1/cosTE(euler_pitch)**2)),
 
         horzcat(0,      
             (droll_euler*-sinTE(euler_roll)), 
             (droll_euler*-cosTE(euler_roll))),
             
         horzcat(0,      
-            (cosTE(euler_roll)*droll_euler*1/cosTE(euler_pitch) + tan(euler_pitch)*dpitch_euler*sinTE(euler_roll)*1/cosTE(euler_pitch)),      
-            (sinTE(euler_roll)*droll_euler*1/cosTE(euler_pitch) + tan(euler_pitch)*dpitch_euler*cosTE(euler_roll)*1/cosTE(euler_pitch))))
+            (cosTE(euler_roll)*droll_euler*1/cosTE(euler_pitch) + tanTE(euler_pitch)*dpitch_euler*sinTE(euler_roll)*1/cosTE(euler_pitch)),      
+            (sinTE(euler_roll)*droll_euler*1/cosTE(euler_pitch) + tanTE(euler_pitch)*dpitch_euler*cosTE(euler_roll)*1/cosTE(euler_pitch))))
     return T_dot
 
 
 def T(euler_roll, euler_pitch, euler_yaw):
     T = vertcat(
-    horzcat(1, sinTE(euler_roll)*tan(euler_pitch), cosTE(euler_roll)*tan(euler_pitch)),
+    horzcat(1, sinTE(euler_roll)*tanTE(euler_pitch), cosTE(euler_roll)*tanTE(euler_pitch)),
     horzcat(0,cosTE(euler_roll), - sinTE(euler_roll)),
     horzcat(0, sinTE(euler_roll)/cosTE(euler_pitch), cosTE(euler_roll)/cosTE(euler_pitch)))
     return T
@@ -159,8 +167,8 @@ tilt4_cont = u_ti[3]
 
 euler_ang_vel_cont = vertcat(
                             (droll_cont + 
-                            dyaw_cont*cosTE(euler_roll_cont)*tan(euler_pitch_cont) + 
-                            dpitch_cont*sinTE(euler_roll_cont)*tan(euler_pitch_cont)),
+                            dyaw_cont*cosTE(euler_roll_cont)*tanTE(euler_pitch_cont) + 
+                            dpitch_cont*sinTE(euler_roll_cont)*tanTE(euler_pitch_cont)),
 
                             (dpitch_cont*cosTE(euler_roll_cont) - 
                             dyaw_cont*sinTE(euler_roll_cont)),
@@ -243,7 +251,7 @@ f_bodyacc_tvp = f_acc(T1_tvp, T2_tvp,T3_tvp,T4_tvp, tilt1_tvp,tilt2_tvp,tilt3_tv
 
 
 euler_ang_vel_tvp = vertcat(
-                                (droll_tvp + dyaw_tvp*cosTE(euler_roll_tvp)*tan(euler_pitch_tvp) + dpitch_tvp*sinTE(euler_roll_tvp)*tan(euler_pitch_tvp)),
+                                (droll_tvp + dyaw_tvp*cosTE(euler_roll_tvp)*tanTE(euler_pitch_tvp) + dpitch_tvp*sinTE(euler_roll_tvp)*tanTE(euler_pitch_tvp)),
 
                                 (dpitch_tvp*cosTE(euler_roll_tvp) - dyaw_tvp*sinTE(euler_roll_tvp)),
 
@@ -267,8 +275,13 @@ T_dot_tvp = T_dot(droll_euler_tvp, dpitch_euler_tvp, dyaw_euler_tvp,euler_roll_t
 alpha_euler_tvp = T_tvp@alpha_b_tvp + T_dot_tvp@vertcat(droll_tvp,dpitch_tvp,dyaw_tvp)
 rotEBMatrix_tvp = rotEB(euler_roll_tvp, euler_pitch_tvp, euler_yaw_tvp)
 
+#uncomment for relative acceleration
 fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])) + 2 * skew(w_euler_tvp)@v_b_tvp + skew(alpha_euler_tvp)@r_b_tvp + skew(w_euler_tvp)@(skew(w_euler_tvp)@r_b_tvp))
-#spatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
+
+#uncomment for no relative acceleration
+#fspatial_linear_acc_tvp = vertcat((rotEBMatrix_tvp@(f_bodyacc_tvp[0:3])))
+
+
 fspatial_rotation_acc_tvp = vertcat(f_bodyacc_tvp[3:6]) 
 fspatial_acc_tvp = vertcat(fspatial_linear_acc_tvp, fspatial_rotation_acc_tvp)
 #print(fspatial_acc_tvp)
@@ -324,9 +337,9 @@ setup_mpc = {
 }
 
 mpc_controller.set_param(**setup_mpc)
-mterm =((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)
+mterm =.9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)+ .0001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
 # terminal cost
-lterm = ((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)
+lterm = .9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) + .0001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
 # stage cost
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
@@ -340,12 +353,17 @@ u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limi
 u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
-
+euler_limits = np.array([.7, .7, .7])
 
 mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
 mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
 mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
+
+mpc_controller.bounds['upper','_x','dtheta'] = euler_limits
+mpc_controller.bounds['lower','_x','dtheta'] = -euler_limits
+
+
 
 
 x0 = np.array([0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]).T

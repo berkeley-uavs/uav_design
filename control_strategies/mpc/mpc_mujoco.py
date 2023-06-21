@@ -52,7 +52,7 @@ with open("control_strategies/mpc/12_states_nonlin_sim.py") as f:
 
 
 def init_controller(model, data):
-    global  mpc_controller, simulator, estimator, desired_velocities, last_x0_dot,x0
+    global  mpc_controller, simulator, estimator, desired_velocities, last_x0_dot,x0, count
     
     
 
@@ -65,8 +65,9 @@ def init_controller(model, data):
     simulator.set_initial_guess()
     last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
-    desired_velocities = np.array([[0.0,0.0,0.4],[0.0,0.0,0.0],[0.2, 0.0, 0.0],[0.5, 0.0, 0.0],[0.1, 0.0, 0.0],[0.0, -0.1, 0.0], [0.0,-0.5,0.0], [0.0,-0.1,0.0],[0.1,0.0,0.0], [0.5,0.0,0.0]  ])
+    desired_velocities = np.array([[0.0,0.0,0.4],[0.0,0.0,0.0],[0.2, 0.0, 0.0],[0.5, 0.0, 0.0],[0.1, 0.0, 0.0],[0.0, -0.1, 0.0], [0.0,-0.5,0.0]])
     x0 = tvp.x
+    count = 0
 
 
 def norm_vec(x1,x2):
@@ -78,8 +79,9 @@ def norm_vec(x1,x2):
 
 
 def controller(model, data ):
-    global  mpc_controller, mpc_model, waypoints, curr_waypoint,u_val, last_x0_dot,x0
+    global  mpc_controller, mpc_model, waypoints, curr_waypoint,u_val, last_x0_dot,x0,count
     dt = 0.04
+    i = int(count / 20)
     start = time.time()
         
     u0 = mpc_controller.make_step(x0)
@@ -96,20 +98,22 @@ def controller(model, data ):
     tvp.x = x0
     tvp.u = u0
     tvp.drone_accel = drone_acceleration
-    tvp.target_velocity = [0.0,0.0,0.2]
+    tvp.target_velocity = desired_velocities[i]
     #tvp.target_velocity = [0.3, 0.0, 0.0]
     print("target velocity is ", tvp.target_velocity)
         
     print("u")
     print(u0)
     apply_control(data,u0)
-        # print("\n")
-        # print("x")
-        # print(x0)
+    print("\n")
+    print("x")
+    print(x0)
         # print("\n")
         # print("a")
         # print(drone_acceleration)
     last_x0_dot = np.array(x0[6:12])
+    print(i)
+    count = count +1
 
     pass
 

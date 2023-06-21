@@ -13,9 +13,15 @@ from global_vars_mpc import global_simulator
 m = 2.0  # drone_mass
 g = 9.81
 arm_length = .2212
-Ixx = 1.0
-Iyy = 1.0
-Izz = 1.0
+# m = 2.0  # drone_mass
+# Ixx = 1.
+# Iyy = 1.
+# Izz = 1.
+m = .66
+Ixx = .00750
+Iyy = .00750
+Izz = .013
+
 
 
 model_type = "continuous"
@@ -152,7 +158,7 @@ euler_ang_vel_cont = vertcat(
                             (dpitch_cont*cos(euler_roll_cont) - 
                             dyaw_cont*sin(euler_roll_cont)),
 
-                            ((dyaw_cont*cos(euler_roll_cont)/(cos(euler_pitch_cont))) + 
+                            ((dyaw_cont*(cos(euler_roll_cont)/(cos(euler_pitch_cont)))) + 
                             dpitch_cont*(sin(euler_roll_cont)/cos(euler_pitch_cont)))
 )
 
@@ -182,7 +188,7 @@ alpha_euler_cont = T_cont@alpha_b_cont + T_dot_cont@vertcat(droll_cont, dpitch_c
 rotEBMatrix_cont = rotEB(euler_roll_cont, euler_pitch_cont, euler_yaw_cont)
 
 # UNCOMMENT FOR No relative acceleration
-# fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
+#fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])))
 
 # UNCOMMENT FOR Relative acceleration
 fspatial_linear_acc_cont = vertcat((rotEBMatrix_cont@(f_bodyacc_cont[0:3])) + 2 * skew(w_euler_cont)@v_b_cont + skew(alpha_euler_cont)@r_b_cont + skew(w_euler_cont)@(skew(w_euler_cont)@r_b_cont))
@@ -204,9 +210,9 @@ simulator = do_mpc.simulator.Simulator(mpc_modelsim)
 params_simulator = {
     # Note: cvode doesn't support DAE systems.
     'integration_tool': 'idas',
-    'abstol': 1e-8,
-    'reltol': 1e-8,
-    't_step': 0.04
+    'abstol': 1e-9,
+    'reltol': 1e-9,
+    't_step': 0.04,
 }
 
 simulator.set_param(**params_simulator)

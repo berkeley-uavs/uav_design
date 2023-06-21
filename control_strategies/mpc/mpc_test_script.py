@@ -9,6 +9,10 @@ from global_vars_mpc import tvp
 from global_vars_mpc import global_simulator
 from global_vars_mpc import mpc_global_controller
 
+# For DataFrame 
+import pandas as pd
+
+
 
 with open("control_strategies/mpc/12_states_linear_controller.py") as f:
     exec(f.read())
@@ -29,7 +33,7 @@ curr_roll = 0.0
 curr_pitch =0.0
 last_x0_dot = np.array([[0.0],[0.0],[0.0],[0.0],[0.0],[0.0]])
 
-desired_velocities = np.array([[0.0, 0.0, 0.2],[0.0, 0.0, 0.0],[0.2, 0.0, 0.0],[0.5, 0.0, 0.0],[0.1, 0.0, 0.0],[0.0, -0.1, 0.0], [0.0,-0.5,0.0], [0.0,-0.1,0.0],[0.1,0.0,0.0], [0.5,0.0,0.0]  ])
+desired_velocities =np.array([[0.0, 0.0, 0.2],[0.0, 0.0, 0.0],[0.2, 0.0, 0.0],[0.5, 0.0, 0.0],[0.1, 0.0, 0.0],[0.0, -0.1, 0.0], [0.0,-0.5,0.0], [0.0,-0.1,0.0],[0.1,0.0,0.0], [0.5,0.0,0.0]  ])
 
 
 # print("u")
@@ -61,14 +65,14 @@ for target_vel in desired_velocities:
         tvp.x = x0
         tvp.u = u0
         tvp.drone_accel = drone_acceleration
-        #tvp.target_velocity = [0.3, 0.0, 0.0]
+        #tvp.target_velocity = [0.0, 0.0, 0.3]
         print("target velocity is ", tvp.target_velocity)
         
         print("u")
         print(u0)
         # print("\n")
-        # print("x")
-        # print(x0)
+        print("x")
+        print(x0)
         # print("\n")
         # print("a")
         # print(drone_acceleration)

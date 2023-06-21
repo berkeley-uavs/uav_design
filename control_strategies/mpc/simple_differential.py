@@ -41,7 +41,7 @@ n = 40
 for i in range(n):
     start = time.time()
     
-    u0 = np.array([0.3, 0.1, 0.5, 0.2, 0.1, 0.2, 0.3, 0.4]).reshape(8, 1)
+    u0 = np.array([0.3, 0.3, 0.3, 0.3, 0.1, 0.0, 0.1, 0.0]).reshape(8, 1)
 
     end = time.time()
     print("Computation time: ", end-start)

@@ -11,12 +11,17 @@ from global_vars_mpc import global_simulator
 
 
 
-m = 2.0  # drone_mass
 g = 9.81
 arm_length = .2212
-Ixx = 1.0
-Iyy = 1.0
-Izz = 1.0
+# m = 2.0
+# Ixx = 1.0
+# Iyy = 1.0
+# Izz = 1.0
+
+m= .66
+Ixx = .00750
+Iyy = .00750
+Izz = .013
 
 
 model_type = "continuous"
