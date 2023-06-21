@@ -16,10 +16,10 @@ arm_length = .2212
 # Ixx = 1.
 # Iyy = 1.
 # Izz = 1.
-m= .66
-Ixx = .00750
-Iyy = .00750
-Izz = .013
+m= 1.14
+Ixx = .00557
+Iyy = .00557
+Izz = .00869
 
 
 model_type = "continuous"
@@ -337,14 +337,14 @@ setup_mpc = {
 }
 
 mpc_controller.set_param(**setup_mpc)
-mterm =.9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)+ .0001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
+mterm =.9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2)+ .003*((dtheta[0])**2 + (dtheta[1])**2 + (dtheta[2])**2 ) + .001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
 # terminal cost
-lterm = .9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) + .0001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
+lterm = .9*((dpos[0]-target_velocity[0])**2 + (dpos[1]-target_velocity[1])**2 + (dpos[2]-target_velocity[2])**2) + .003*((dtheta[0])**2 + (dtheta[1])**2 + (dtheta[2])**2 ) + .001*((euler_ang[0])**2 + (euler_ang[1])**2 + (euler_ang[2])**2 )
 # stage cost
 
 mpc_controller.set_objective(mterm=mterm, lterm=lterm)
 # Input force is implicitly restricted through the objective.
-mpc_controller.set_rterm(u_th=0.1)
+mpc_controller.set_rterm(u_th=0.1)#
 mpc_controller.set_rterm(u_ti=0.01)
 
 tilt_limit = pi/(2.2)
@@ -353,16 +353,18 @@ u_upper_limits = np.array([thrust_limit, thrust_limit, thrust_limit, thrust_limi
 u_lower_limits =  np.array([0.00, 0.00, 0.00, 0.00])
 u_ti_upper_limits = np.array([tilt_limit, tilt_limit, tilt_limit, tilt_limit])
 u_ti_lower_limits =  np.array([-tilt_limit, -tilt_limit, -tilt_limit, -tilt_limit])
-euler_limits = np.array([.7, .7, .7])
+rate_limits = np.array([.7, .7, .7])
+euler_limits = np.array([pi/3, pi/3, pi/2])
 
 mpc_controller.bounds['lower','_u','u_th'] = u_lower_limits
 mpc_controller.bounds['upper','_u','u_th'] = u_upper_limits
 mpc_controller.bounds['lower','_u','u_ti'] = u_ti_lower_limits
 mpc_controller.bounds['upper','_u','u_ti'] = u_ti_upper_limits
 
-mpc_controller.bounds['upper','_x','dtheta'] = euler_limits
-mpc_controller.bounds['lower','_x','dtheta'] = -euler_limits
-
+mpc_controller.bounds['upper','_x','dtheta'] = rate_limits
+mpc_controller.bounds['lower','_x','dtheta'] = -rate_limits
+#mpc_controller.bounds['upper','_x','euler_ang'] = euler_limits
+#mpc_controller.bounds['lower','_x','euler_ang'] = -euler_limits
 
 
 
